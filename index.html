@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Andrei Media Production</title>
+
+  <!--
+    GOOGLE FONTS
+    DM Serif Display → elegant serif for headings
+    DM Sans          → clean sans-serif for body text
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ============================================================
+       CSS RESET — consistent baseline across all browsers
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ============================================================
+       DESIGN TOKENS — brand variables used everywhere below.
+       Change one value here and it updates across the whole page.
+    ============================================================ */
+    :root {
+      --bg:          #0b0b0c;       /* main dark background          */
+      --surface:     #111113;       /* card / elevated surfaces      */
+      --border:      rgba(255,255,255,0.08); /* subtle dividers      */
+      --text:        #f0ede8;       /* primary light text            */
+      --muted:       #7a7870;       /* secondary grey text           */
+      --accent:      #d4a853;       /* brand gold                    */
+      --accent-lt:   #e8c980;       /* lighter gold for hover states */
+      --serif:       'DM Serif Display', Georgia, serif;
+      --sans:        'DM Sans', system-ui, sans-serif;
+      --ease:        cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Utility ── */
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 clamp(1rem, 4vw, 2.5rem); /* fluid side padding */
+    }
+
+    /* ============================================================
+       KEYFRAME ANIMATIONS
+    ============================================================ */
+
+    /* Generic fade + rise — used on hero text and section headings */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+
+    /* Scale pop — used on lens buttons */
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.88); }
+      to   { opacity: 1; transform: scale(1);    }
+    }
+
+    /* Shimmer sweep — the gold line under the brand name */
+    @keyframes shimmer {
+      0%    { transform: scaleX(0); transform-origin: left;  }
+      50%   { transform: scaleX(1); transform-origin: left;  }
+      50.01%{ transform: scaleX(1); transform-origin: right; }
+      100%  { transform: scaleX(0); transform-origin: right; }
+    }
+
+    /* Slow continuous rotation — lens rings */
+    @keyframes spin        { to { transform: rotate( 360deg); } }
+    @keyframes spinReverse { to { transform: rotate(-360deg); } }
+
+    /* Gentle opacity pulse — lens glow & aperture center dot */
+    @keyframes glow { 0%,100%{opacity:.22} 50%{opacity:.55} }
+
+    /* AR coating shimmer — lens anti-reflection rings */
+    @keyframes ar   { 0%,100%{opacity:.14} 50%{opacity:.50} }
+
+
+    /* ============================================================
+       ══════════════════════════════════════════════════════════
+       SECTION 1 — LANGUAGE PICKER
+       Full-screen overlay shown before the main site.
+       Fades out when the user clicks a lens.
+       ══════════════════════════════════════════════════════════
+    ============================================================ */
+
+    #lang-picker {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+      /* Dark background with a warm amber centre glow */
+      background: radial-gradient(ellipse 70% 50% at 50% 58%, #1c1408 0%, #0b0b0c 100%);
+      transition: opacity .6s var(--ease), transform .6s var(--ease);
+    }
+
+    /* Dot-grid texture overlay */
+    #lang-picker::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(212,168,83,.055) 1px, transparent 1px);
+      background-size: 30px 30px;
+      pointer-events: none;
+    }
+
+    /* Adding .hidden fades and scales the picker away */
+    #lang-picker.hidden {
+      opacity: 0;
+      transform: scale(1.05);
+      pointer-events: none;
+    }
+
+    /* ── Brand / title above the lenses ── */
+    .picker-brand {
+      text-align: center;
+      position: relative; z-index: 1;
+      animation: fadeUp .7s var(--ease) both;
+    }
+    .picker-brand-name {
+      font-family: var(--serif);
+      font-size: clamp(1.5rem, 4vw, 2.4rem);
+      letter-spacing: .04em;
+    }
+    .picker-brand-name .accent { color: var(--accent); }
+
+    /* Animated gold line under the brand name */
+    .picker-line {
+      display: block; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      margin-top: .6rem;
+      animation: shimmer 3s ease-in-out infinite 1.2s;
+    }
+    .picker-sub {
+      font-size: .72rem;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: .55rem;
+    }
+
+    /* ── Row holding the three lens buttons ── */
+    .lens-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: clamp(1rem, 4vw, 4.5rem);
+      flex-wrap: wrap;   /* stacks to column on narrow screens */
+      position: relative; z-index: 1;
+    }
+
+    /* ── Vertical divider between lenses ── */
+    .lens-divider {
+      width: 1px; height: 150px;
+      background: linear-gradient(to bottom, transparent, var(--border), transparent);
+      align-self: center;
+    }
+    /* Hide dividers when buttons wrap onto new lines */
+    @media (max-width: 560px) { .lens-divider { display: none; } }
+
+    /* ── Individual lens button ── */
+    .lens-btn {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 1.3rem;
+      background: none; border: none; padding: 0;
+      color: inherit; cursor: pointer;
+      animation: popIn .7s var(--ease) both;
+    }
+    .lens-btn:nth-child(1) { animation-delay: .10s; }
+    .lens-btn:nth-child(3) { animation-delay: .22s; } /* child 2 is divider */
+    .lens-btn:nth-child(5) { animation-delay: .34s; }
+
+    /* Lift on hover with a spring overshoot */
+    .lens-btn:hover { transform: translateY(-7px); transition: transform .4s var(--ease-spring); }
+
+    /* SVG lens wrapper — size is fluid via clamp */
+    .lens-graphic {
+      width:  clamp(110px, 16vw, 175px);
+      height: clamp(110px, 16vw, 175px);
+      transition: filter .4s var(--ease);
+    }
+    .lens-btn:hover .lens-graphic {
+      filter: drop-shadow(0 14px 36px var(--lg, rgba(212,168,83,.28)));
+    }
+
+    /* Rotating lens rings — speed controlled by CSS var --dur */
+    .lr-outer  { transform-origin:50% 50%; animation: spin        var(--dur,28s) linear infinite; }
+    .lr-mid    { transform-origin:50% 50%; animation: spinReverse var(--dur,18s) linear infinite; }
+    .lr-blades { transform-origin:50% 50%; animation: spin        var(--dur,10s) linear infinite; }
+
+    /* AR shimmer rings staggered */
+    .ar1 { animation: ar 3.0s ease-in-out infinite; }
+    .ar2 { animation: ar 4.2s ease-in-out infinite .7s; }
+    .ar3 { animation: ar 2.8s ease-in-out infinite 1.5s; }
+
+    /* Ambient glow pulse behind each lens */
+    .lens-halo { animation: glow 3s ease-in-out infinite; }
+
+    /* ── Text label under the lens ── */
+    .lens-label { text-align: center; }
+    .lens-lang  {
+      font-family: var(--serif);
+      font-size: clamp(1.1rem, 2.5vw, 1.7rem);
+      display: block; margin-bottom: .25rem;
+      transition: color .3s;
+    }
+    .lens-btn:hover .lens-lang { color: var(--accent-lt); }
+
+    .lens-sub {
+      font-size: .7rem; letter-spacing: .17em;
+      text-transform: uppercase; color: var(--muted);
+      display: block; margin-bottom: .7rem;
+      transition: color .3s;
+    }
+    .lens-btn:hover .lens-sub { color: var(--accent); }
+
+    .lens-tags { display:flex; flex-wrap:wrap; gap:.3rem; justify-content:center; }
+    .lens-tag  {
+      font-size: .56rem; font-weight: 500; letter-spacing: .12em;
+      text-transform: uppercase; padding: .2em .65em;
+      border: 1px solid rgba(255,255,255,.10); border-radius: 100px;
+      color: rgba(122,120,112,.8);
+      transition: border-color .3s, color .3s, background .3s;
+    }
+    .lens-btn:hover .lens-tag {
+      border-color: rgba(212,168,83,.4);
+      color: var(--accent-lt); background: rgba(212,168,83,.06);
+    }
+
+    /* "Continue" arrow — appears on hover */
+    .lens-enter {
+      font-size: .63rem; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--accent);
+      display: block; margin-top: .55rem;
+      opacity: 0; transform: translateY(5px);
+      transition: opacity .25s, transform .25s;
+    }
+    .lens-btn:hover .lens-enter { opacity:1; transform:translateY(0); }
+
+
+    /* ============================================================
+       ══════════════════════════════════════════════════════════
+       SECTION 2 — MAIN SITE
+       Hidden until a language is chosen, then fades in.
+       ══════════════════════════════════════════════════════════
+    ============================================================ */
+
+    #site {
+      opacity: 0; pointer-events: none;
+      transition: opacity .8s var(--ease) .3s;
+    }
+    #site.visible { opacity:1; pointer-events:all; }
+
+
+    /* ============================================================
+       NAVIGATION
+       Sticky top bar with backdrop blur.
+    ============================================================ */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      padding: 1rem 0;
+      background: rgba(11,11,12,.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 1rem;
+    }
+    .nav-logo {
+      font-family: var(--serif); font-size: 1.1rem;
+      text-decoration: none; color: var(--text);
+      white-space: nowrap;
+    }
+    .nav-logo span { color: var(--accent); }
+
+    /* Desktop links */
+    .nav-links { display:flex; list-style:none; gap:2rem; align-items:center; }
+    .nav-links a {
+      font-size: .77rem; font-weight:500; letter-spacing:.14em;
+      text-transform:uppercase; text-decoration:none; color:var(--muted);
+      transition: color .25s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    /* Language toggle pill */
+    .nav-lang {
+      font-size:.68rem; font-weight:600; letter-spacing:.14em;
+      text-transform:uppercase; color:var(--muted);
+      background:none; border:1px solid var(--border);
+      padding:.38em .9em; border-radius:100px; cursor:pointer;
+      transition: color .25s, border-color .25s;
+    }
+    .nav-lang:hover { color:var(--accent); border-color:rgba(212,168,83,.4); }
+
+    /* Hamburger — mobile only */
+    .nav-ham {
+      display: none; flex-direction:column; gap:5px;
+      background:none; border:none; cursor:pointer; padding:4px;
+    }
+    .nav-ham span {
+      display:block; width:22px; height:1.5px;
+      background:var(--text);
+      transition: transform .3s, opacity .3s;
+    }
+    .nav-ham.open span:nth-child(1){ transform:translateY(6.5px) rotate(45deg); }
+    .nav-ham.open span:nth-child(2){ opacity:0; }
+    .nav-ham.open span:nth-child(3){ transform:translateY(-6.5px) rotate(-45deg); }
+
+    /* Mobile dropdown */
+    .nav-mobile {
+      display:none; flex-direction:column;
+      border-top:1px solid var(--border); padding:.75rem 0;
+    }
+    .nav-mobile a {
+      font-size:.82rem; font-weight:500; letter-spacing:.12em;
+      text-transform:uppercase; text-decoration:none; color:var(--muted);
+      padding:.7rem 0; border-bottom:1px solid var(--border);
+      transition: color .25s;
+    }
+    .nav-mobile a:hover { color: var(--accent); }
+
+    @media (max-width: 700px) {
+      .nav-links { display:none; }
+      .nav-ham   { display:flex; }
+    }
+
+
+    /* ============================================================
+       ══════════════════════════════════════════════════════════
+       HERO — PARALLAX BACKGROUND
+       The hero has a fixed-attachment image that scrolls slower
+       than the page content, creating a classic parallax depth.
+
+       HOW PARALLAX WORKS HERE:
+       The .hero-bg div has position:absolute and its translateY
+       is updated every frame by JavaScript via requestAnimationFrame.
+       The image moves at ~0.4× the scroll speed, so it lags behind
+       the page and creates a sense of depth.
+       ══════════════════════════════════════════════════════════
+    ============================================================ */
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex; align-items: center;
+      overflow: hidden;   /* clips the parallax image as it shifts */
+    }
+
+    /*
+      PARALLAX LAYER — sits behind everything else.
+      Its translateY is set by JS. We start it slightly oversized
+      (110% height) so there is room to move without showing gaps.
+    */
+    .hero-bg {
+      position: absolute; inset: 0;
+      width: 100%; height: 110%;   /* extra height for parallax travel */
+      top: -5%;                    /* offset so it starts centred      */
+      will-change: transform;      /* hint to browser for GPU compositing */
+      z-index: 0;
+    }
+
+    /* The actual background image */
+    .hero-bg img {
+      width:100%; height:100%;
+      object-fit: cover; object-position: center;
+      display: block;
+    }
+
+    /* Dark gradient overlay so text stays readable over the photo */
+    .hero-bg::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        to right,
+        rgba(11,11,12,.88) 0%,
+        rgba(11,11,12,.60) 55%,
+        rgba(11,11,12,.30) 100%
+      );
+    }
+
+    /* Hero content sits above the parallax layer */
+    .hero-content {
+      position: relative; z-index: 1;
+      padding: 7rem 0 5rem;
+    }
+
+    /* Entrance animations for hero text elements */
+    .hero-eyebrow {
+      font-size:.72rem; font-weight:500; letter-spacing:.3em;
+      text-transform:uppercase; color:var(--accent);
+      display:flex; align-items:center; gap:.8rem;
+      margin-bottom:1.2rem;
+      opacity:0; transform:translateY(18px);
+      transition:opacity .7s var(--ease), transform .7s var(--ease);
+    }
+    .hero-eyebrow::before {
+      content:''; display:block; width:36px; height:1px;
+      background:var(--accent); flex-shrink:0;
+    }
+    .hero-name {
+      font-family:var(--serif);
+      font-size:clamp(2.8rem,8vw,6.5rem);
+      line-height:1.0; letter-spacing:-.01em;
+      margin-bottom:.2rem;
+      opacity:0; transform:translateY(20px);
+      transition:opacity .7s var(--ease) .15s, transform .7s var(--ease) .15s;
+    }
+    .hero-name-sub {
+      font-family:var(--serif); font-style:italic;
+      font-size:clamp(1.7rem,5vw,4rem);
+      color:var(--accent); line-height:1.1;
+      margin-bottom:1.8rem;
+      opacity:0; transform:translateY(20px);
+      transition:opacity .7s var(--ease) .28s, transform .7s var(--ease) .28s;
+    }
+    .hero-tagline {
+      font-size:clamp(.95rem,2vw,1.15rem); font-weight:300;
+      color:rgba(240,237,232,.75); max-width:460px; line-height:1.78;
+      margin-bottom:2.5rem;
+      opacity:0; transform:translateY(16px);
+      transition:opacity .7s var(--ease) .4s, transform .7s var(--ease) .4s;
+    }
+    .hero-actions {
+      display:flex; gap:1rem; flex-wrap:wrap;
+      opacity:0; transform:translateY(12px);
+      transition:opacity .7s var(--ease) .55s, transform .7s var(--ease) .55s;
+    }
+
+    /* Trigger all hero animations when .active is added by JS */
+    .hero.active .hero-eyebrow,
+    .hero.active .hero-name,
+    .hero.active .hero-name-sub,
+    .hero.active .hero-tagline,
+    .hero.active .hero-actions { opacity:1; transform:translateY(0); }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display:inline-flex; align-items:center; gap:.5rem;
+      background:var(--accent); color:#0b0b0c;
+      font-family:var(--sans); font-size:.78rem; font-weight:600;
+      letter-spacing:.14em; text-transform:uppercase;
+      text-decoration:none; padding:.85em 1.8em;
+      border-radius:100px; border:none; cursor:pointer;
+      transition: background .25s, transform .25s;
+    }
+    .btn-primary:hover { background:var(--accent-lt); transform:translateY(-2px); }
+
+    .btn-ghost {
+      display:inline-flex; align-items:center; gap:.5rem;
+      background:transparent; color:var(--text);
+      font-family:var(--sans); font-size:.78rem; font-weight:500;
+      letter-spacing:.14em; text-transform:uppercase;
+      text-decoration:none; padding:.85em 1.8em;
+      border-radius:100px; border:1px solid rgba(255,255,255,.18); cursor:pointer;
+      transition: border-color .25s, color .25s, transform .25s;
+    }
+    .btn-ghost:hover { border-color:rgba(212,168,83,.45); color:var(--accent); transform:translateY(-2px); }
+
+
+    /* ============================================================
+       ══════════════════════════════════════════════════════════
+       PARALLAX BAND — between Hero and Services
+       A full-width image strip with text overlaid, also parallaxing.
+       ══════════════════════════════════════════════════════════
+    ============================================================ */
+
+    .parallax-band {
+      position: relative;
+      height: clamp(280px, 45vw, 480px);
+      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Parallax image inside the band */
+    .parallax-band .pb-img {
+      position: absolute; inset: 0;
+      width:100%; height:115%;     /* oversized so there's room to travel */
+      top:-7.5%;
+      will-change: transform; z-index:0;
+    }
+    .parallax-band .pb-img img {
+      width:100%; height:100%; object-fit:cover; display:block;
+    }
+    /* Semi-transparent dark overlay */
+    .parallax-band .pb-img::after {
+      content:''; position:absolute; inset:0;
+      background:rgba(11,11,12,.65);
+    }
+
+    /* Centred quote/text on top of the band */
+    .pb-text {
+      position:relative; z-index:1;
+      text-align:center; padding:0 1.5rem;
+    }
+    .pb-text blockquote {
+      font-family:var(--serif); font-style:italic;
+      font-size:clamp(1.3rem,3.5vw,2.2rem);
+      color:var(--text); line-height:1.35;
+      max-width:720px;
+    }
+    .pb-text cite {
+      display:block; margin-top:1rem;
+      font-size:.75rem; letter-spacing:.22em;
+      text-transform:uppercase; color:var(--accent);
+      font-style:normal;
+    }
+
+
+    /* ============================================================
+       ══════════════════════════════════════════════════════════
+       SERVICES — FLIP CARDS
+       Each card has a FRONT face and a BACK face.
+       On hover the whole card rotates 180° on the Y axis,
+       revealing the back face.
+
+       HOW THE FLIP WORKS:
+       1. .flip-card is the outer container with fixed dimensions.
+       2. .flip-inner is a child that does the 3D rotation.
+       3. .flip-front and .flip-back are absolutely positioned
+          on top of each other inside .flip-inner.
+       4. .flip-back has rotateY(180deg) so it starts face-down.
+       5. On hover of .flip-card, .flip-inner rotates 180deg —
+          the front disappears and the back comes into view.
+       6. backface-visibility:hidden makes each face invisible
+          when it's pointing away from the viewer.
+       ══════════════════════════════════════════════════════════
+    ============================================================ */
+
+    .services {
+      padding: 7rem 0;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Section header — shared pattern */
+    .section-header   { margin-bottom:3rem; }
+    .section-eyebrow  {
+      font-size:.7rem; font-weight:500; letter-spacing:.3em;
+      text-transform:uppercase; color:var(--accent); margin-bottom:.7rem;
+    }
+    .section-title    {
+      font-family:var(--serif);
+      font-size:clamp(1.7rem,4vw,2.8rem); line-height:1.1;
+    }
+    .section-title em { font-style:italic; color:var(--accent); }
+    .section-desc     {
+      font-size:.98rem; font-weight:300; color:var(--muted);
+      max-width:500px; line-height:1.75; margin-top:.9rem;
+    }
+
+    /* Grid of flip cards — 3 columns on desktop */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.8rem;
+    }
+
+    /*
+      FLIP CARD OUTER CONTAINER
+      perspective gives the 3D depth to the rotation.
+      A larger perspective value = more subtle 3D effect.
+    */
+    .flip-card {
+      perspective: 1000px;
+      height: 420px;      /* fixed height so front and back match */
+      /* Scroll-in animation (triggered by IntersectionObserver) */
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .6s var(--ease), transform .6s var(--ease);
+    }
+    .flip-card.visible { opacity:1; transform:translateY(0); }
+
+    /* Stagger each card's entrance */
+    .flip-card:nth-child(1) { transition-delay: 0s;   }
+    .flip-card:nth-child(2) { transition-delay: .12s; }
+    .flip-card:nth-child(3) { transition-delay: .24s; }
+
+    /*
+      FLIP INNER — this is what actually rotates.
+      transform-style:preserve-3d makes children live in 3D space.
+      transition drives the smooth 180° flip on hover.
+    */
+    .flip-inner {
+      position: relative;
+      width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transition: transform .7s cubic-bezier(0.4, 0.2, 0.2, 1);
+    }
+
+    /* When the outer .flip-card is hovered, rotate the inner 180° */
+    .flip-card:hover .flip-inner { transform: rotateY(180deg); }
+
+    /*
+      FRONT & BACK share the same position/size.
+      backface-visibility:hidden makes each face invisible
+      when it faces away from the viewer.
+    */
+    .flip-front,
+    .flip-back {
+      position: absolute; inset: 0;
+      border-radius: 14px;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden; /* Safari */
+      overflow: hidden;
+    }
+
+    /* ── FRONT FACE ── */
+    .flip-front {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex; flex-direction: column;
+    }
+
+    /* Photo in the top half of the front face */
+    .card-photo {
+      width: 100%; height: 55%;
+      overflow: hidden; position: relative; flex-shrink: 0;
+    }
+    .card-photo img {
+      width:100%; height:100%; object-fit:cover; display:block;
+      transition: transform .5s var(--ease);
+    }
+    /* Slight zoom on the photo when card is hovered (before flip) */
+    .flip-card:hover .card-photo img { transform: scale(1.06); }
+
+    /* Gold gradient fade from photo into card body */
+    .card-photo::after {
+      content:''; position:absolute; bottom:0; left:0; right:0;
+      height:50%;
+      background:linear-gradient(to bottom, transparent, var(--surface));
+    }
+
+    /* Card body — bottom half of front face */
+    .card-body {
+      padding: 1.4rem 1.6rem 1.6rem;
+      display: flex; flex-direction: column;
+      gap: .5rem; flex: 1;
+    }
+    .card-num {
+      font-family:var(--serif); font-size:2.8rem; line-height:1;
+      color:rgba(212,168,83,.12); margin-bottom:.2rem;
+    }
+    .card-name {
+      font-family:var(--serif); font-size:1.25rem; color:var(--text);
+    }
+    .card-hint {
+      font-size:.72rem; letter-spacing:.16em; text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    /* Hover-to-flip hint bar at bottom of front face */
+    .card-flip-hint {
+      margin-top: auto;
+      font-size: .62rem; letter-spacing:.18em; text-transform:uppercase;
+      color:var(--accent); opacity:.6;
+      display:flex; align-items:center; gap:.4rem;
+    }
+    .card-flip-hint::after { content:'→'; }
+
+    /* ── BACK FACE ── */
+    /* Starts rotated 180° so it's hidden; becomes visible after the flip */
+    .flip-back {
+      transform: rotateY(180deg);
+      background: linear-gradient(145deg, #181614 0%, #111010 100%);
+      border: 1px solid rgba(212,168,83,.25);
+      display: flex; flex-direction: column;
+      justify-content: center;
+      padding: 2.2rem 2rem;
+      gap: 1.2rem;
+    }
+
+    /* Gold top accent bar on the back face */
+    .flip-back::before {
+      content:'';
+      position:absolute; top:0; left:0; right:0; height:3px;
+      background:linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .back-icon  { font-size:2.4rem; }
+    .back-name  {
+      font-family:var(--serif); font-size:1.35rem; color:var(--accent);
+    }
+    .back-desc  {
+      font-size:.9rem; font-weight:300; color:var(--muted); line-height:1.75;
+    }
+
+    /* Bullet list on the back of Media Production card */
+    .back-bullets {
+      list-style:none; display:flex; flex-direction:column; gap:.4rem;
+      margin-top:.3rem;
+    }
+    .back-bullets li {
+      font-size:.82rem; color:var(--muted);
+      padding-left:1rem; position:relative;
+    }
+    .back-bullets li::before {
+      content:''; position:absolute; left:0; top:.55em;
+      width:4px; height:4px; border-radius:50%;
+      background:var(--accent); opacity:.65;
+    }
+
+    /* Responsive grid breakpoints */
+    @media (max-width: 900px) { .services-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width: 580px) {
+      .services-grid { grid-template-columns:1fr; }
+      /*
+        On touch devices there is no hover, so we make the card
+        taller and reduce the flip height so back content fits.
+      */
+      .flip-card { height:380px; }
+    }
+
+    /*
+      TOUCH DEVICES — no hover state.
+      We use a click-based class .flipped added by JS.
+    */
+    .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+
+
+    /* ============================================================
+       ══════════════════════════════════════════════════════════
+       PARALLAX BAND #2 — between Services and About
+       ══════════════════════════════════════════════════════════
+    ============================================================ */
+
+
+    /* ============================================================
+       ABOUT SECTION — text + animated aperture
+    ============================================================ */
+
+    .about {
+      padding:7rem 0;
+      border-top:1px solid var(--border);
+    }
+    .about-grid {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:4rem; align-items:center;
+    }
+    @media (max-width:750px) {
+      .about-grid { grid-template-columns:1fr; gap:2.5rem; }
+    }
+
+    .about-text p {
+      font-size:.98rem; font-weight:300; color:var(--muted);
+      line-height:1.82; margin-bottom:1rem;
+    }
+    .about-text p:last-child { margin-bottom:0; }
+    .about-text strong { color:var(--text); font-weight:500; }
+
+    .about-visual { display:flex; align-items:center; justify-content:center; }
+
+    /* Animated aperture decoration */
+    .aperture-wrap {
+      width:clamp(160px,28vw,260px); aspect-ratio:1;
+    }
+    .aperture-wrap svg { width:100%; height:100%; }
+    .aper-outer { animation:spin        22s linear infinite; transform-origin:50% 50%; }
+    .aper-inner { animation:spinReverse 14s linear infinite; transform-origin:50% 50%; }
+    .aper-dot   { animation:glow  2.5s ease-in-out infinite; }
+
+    /* Stats row under the aperture */
+    .about-stats { display:flex; gap:2rem; margin-top:2rem; flex-wrap:wrap; }
+    .stat-number {
+      font-family:var(--serif); font-size:2.1rem;
+      color:var(--accent); line-height:1; display:block;
+    }
+    .stat-label  {
+      font-size:.68rem; letter-spacing:.18em;
+      text-transform:uppercase; color:var(--muted);
+      margin-top:.25rem; display:block;
+    }
+
+
+    /* ============================================================
+       CONTACT SECTION — responsive redesign with form + socials
+       ─────────────────────────────────────────────────────────
+       Breakpoints used:
+         > 860px  → two columns side by side (desktop)
+         481–860px → one column, generous spacing (tablet)
+         ≤ 480px  → one column, compact spacing (mobile)
+    ============================================================ */
+
+    .contact {
+      /* Fluid top/bottom padding — shrinks on small screens */
+      padding: clamp(3.5rem, 8vw, 7rem) 0;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Two-column grid ──
+       On desktop: left column (intro + socials) is slightly narrower
+       than the right column (form).
+       Below 860px: stacks to a single column automatically.
+    */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: clamp(2rem, 5vw, 4.5rem);
+      align-items: start;
+      margin-top: clamp(1.8rem, 4vw, 3rem);
+    }
+
+    /* Tablet & mobile → single column */
+    @media (max-width: 860px) {
+      .contact-grid {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+      }
+    }
+
+    /* ── Left column ── */
+    .contact-left {
+      /* On mobile the left column comes AFTER the form,
+         but visually we want intro first. order keeps it natural. */
+    }
+
+    .contact-intro {
+      font-size: clamp(.92rem, 2vw, 1rem);
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.82;
+      margin-bottom: 2rem;
+    }
+
+    /* "Connect with me" label */
+    .connect-label {
+      font-size: .68rem;
+      font-weight: 500;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Social / connect buttons grid ──
+       Desktop : 2 columns
+       Narrow mobile (< 400px) : 1 column (big tap targets)
+    */
+    .connect-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .65rem;
+    }
+
+    @media (max-width: 400px) {
+      /* Full-width single column — each button easy to tap */
+      .connect-btns { grid-template-columns: 1fr; }
+    }
+
+    /* Base connect button */
+    .connect-btn {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      /* min-height ensures a comfortable 44px touch target on mobile */
+      min-height: 44px;
+      padding: .7em 1em;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      /* fluid font size — readable on all screens */
+      font-size: clamp(.75rem, 1.8vw, .82rem);
+      font-weight: 500;
+      text-decoration: none;
+      letter-spacing: .03em;
+      /* animate colour + lift on hover */
+      transition:
+        background   .25s var(--ease),
+        border-color .25s var(--ease),
+        color        .25s var(--ease),
+        transform    .25s var(--ease-spring),
+        box-shadow   .25s var(--ease);
+    }
+
+    /* Lift + soft shadow on hover (desktop only — no hover on touch) */
+    @media (hover: hover) {
+      .connect-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,.25);
+      }
+    }
+
+    /* Active state — provides tactile feedback on touch devices */
+    .connect-btn:active { transform: scale(.97); }
+
+    .connect-icon {
+      width: 1.1rem;
+      height: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    /* Per-platform accent colours on hover */
+    .connect-email:hover     { background:rgba(212,168,83,.10); border-color:rgba(212,168,83,.45); color:var(--accent-lt); }
+    .connect-instagram:hover { background:rgba(225,48,108,.08);  border-color:rgba(225,48,108,.35);  color:#e1306c; }
+    .connect-facebook:hover  { background:rgba(24,119,242,.08);  border-color:rgba(24,119,242,.35);  color:#4a90e2; }
+    .connect-linkedin:hover  { background:rgba(10,102,194,.08);  border-color:rgba(10,102,194,.35);  color:#6babde; }
+
+    /* ── Contact form ── */
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1.1rem, 2.5vw, 1.4rem);
+    }
+
+    /* Each label + input + error wrapper */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: .42rem;
+    }
+
+    .form-label {
+      font-size: clamp(.68rem, 1.6vw, .75rem);
+      font-weight: 500;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── All inputs, selects, and textarea share this base style ── */
+    .form-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--sans);
+      /* 16px minimum prevents iOS Safari from auto-zooming on focus */
+      font-size: max(.95rem, 16px);
+      font-weight: 300;
+      /* vertical padding creates the 44px+ touch target height */
+      padding: .72em 1em;
+      outline: none;
+      /* remove browser default styling (especially on iOS) */
+      appearance: none;
+      -webkit-appearance: none;
+      transition: border-color .25s var(--ease), box-shadow .25s var(--ease);
+    }
+
+    /* Gold glow ring on focus — visible keyboard indicator */
+    .form-input:focus {
+      border-color: rgba(212,168,83,.55);
+      box-shadow: 0 0 0 3px rgba(212,168,83,.10);
+    }
+
+    .form-input::placeholder { color: rgba(122,120,112,.45); }
+
+    /* Red border when JS marks a field invalid */
+    .form-input.invalid {
+      border-color: rgba(220,80,80,.55);
+      box-shadow: 0 0 0 3px rgba(220,80,80,.08);
+    }
+
+    /* ── Custom select dropdown ──
+       We hide the browser's native arrow and draw our own gold one
+       via the ::after pseudo-element on the wrapper div.
+    */
+    .select-wrap { position: relative; }
+
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      right: 1em;
+      top: 50%;
+      transform: translateY(-50%);
+      /* Triangle arrow shape */
+      width: 0; height: 0;
+      border-left:  5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top:   5px solid var(--accent);
+      pointer-events: none; /* clicks pass through to the <select> */
+    }
+
+    .form-select {
+      padding-right: 2.5em; /* room for the custom arrow */
+      cursor: pointer;
+    }
+
+    /* Style the <option> elements inside the dropdown */
+    .form-select option {
+      background: #1a1a1c;
+      color: var(--text);
+    }
+
+    /* Textarea — vertical resize only so layout stays clean */
+    .form-textarea {
+      resize: vertical;
+      min-height: 120px;
+      /* On mobile, allow textarea to grow a bit more for comfort */
+    }
+
+    @media (max-width: 480px) {
+      .form-textarea { min-height: 100px; }
+    }
+
+    /* Validation error text — always reserves its height so
+       other elements don't jump when an error appears */
+    .form-error {
+      font-size: .71rem;
+      color: #e05050;
+      min-height: 1em;
+      line-height: 1.4;
+    }
+
+    /* ── Submit button ──
+       On desktop: fits its content.
+       On mobile: full width for a comfortable tap target.
+    */
+    .form-submit {
+      align-self: flex-start;
+      margin-top: .4rem;
+    }
+
+    @media (max-width: 540px) {
+      .form-submit {
+        width: 100%;
+        justify-content: center;
+        /* Explicit height for reliable touch target */
+        padding-top: .95em;
+        padding-bottom: .95em;
+      }
+    }
+
+    /* ── Success message ──
+       Shown after valid submission, hidden by default via .hidden.
+    */
+    .form-success {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      padding: 1em 1.2em;
+      background: rgba(80,200,120,.08);
+      border: 1px solid rgba(80,200,120,.22);
+      border-radius: 8px;
+      color: #6ee89a;
+      font-size: clamp(.82rem, 2vw, .9rem);
+      line-height: 1.5;
+    }
+
+    /* .hidden — toggled by JS to show/hide the success message */
+    .hidden { display: none !important; }
+
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+
+    .footer {
+      padding:2rem 0;
+      border-top:1px solid var(--border);
+    }
+    .footer-inner {
+      display:flex; align-items:center;
+      justify-content:space-between; flex-wrap:wrap; gap:1rem;
+    }
+    .footer-logo { font-family:var(--serif); font-size:1rem; }
+    .footer-logo span { color:var(--accent); }
+    .footer-copy { font-size:.74rem; color:var(--muted); }
+    .footer-lang {
+      font-size:.7rem; letter-spacing:.14em; text-transform:uppercase;
+      color:var(--muted); background:none; border:none;
+      cursor:pointer; text-decoration:underline; text-underline-offset:3px;
+      transition:color .25s;
+    }
+    .footer-lang:hover { color:var(--accent); }
+
+
+    /* ============================================================
+       SCROLL REVEAL HELPER
+       Elements with .reveal start invisible and animate in when
+       the IntersectionObserver fires.
+    ============================================================ */
+    .reveal {
+      opacity:0; transform:translateY(24px);
+      transition: opacity .65s var(--ease), transform .65s var(--ease);
+    }
+    .reveal.visible { opacity:1; transform:translateY(0); }
+
+  </style>
+</head>
+<body>
+
+
+<!-- ==============================================================
+     LANGUAGE PICKER SCREEN
+     Shown on first load. User clicks a lens to choose a language.
+     After clicking: picker fades out, main site fades in.
+============================================================== -->
+<div id="lang-picker" role="dialog" aria-label="Choose language">
+
+  <!-- Brand name -->
+  <div class="picker-brand">
+    <p class="picker-brand-name"><span class="accent">Andrei</span> Media Production</p>
+    <em class="picker-line"></em>
+    <p class="picker-sub">Select language &middot; Seleziona la lingua &middot; Alege limba</p>
+  </div>
+
+  <!-- Three lenses in a row -->
+  <div class="lens-row">
+
+    <!-- ── ENGLISH LENS (cool blue-silver glass) ── -->
+    <button class="lens-btn" onclick="selectLang('en')" aria-label="Enter in English">
+      <div class="lens-graphic" style="--lg:rgba(80,140,210,.30)">
+        <svg viewBox="0 0 200 200">
+          <defs>
+            <radialGradient id="en-halo"><stop offset="55%" stop-color="#1a3d88" stop-opacity="0"/><stop offset="100%" stop-color="#2255bb" stop-opacity=".42"/></radialGradient>
+            <radialGradient id="en-body" cx="50%" cy="42%" r="52%"><stop offset="0%" stop-color="#1c2230"/><stop offset="60%" stop-color="#101520"/><stop offset="100%" stop-color="#070a0e"/></radialGradient>
+            <radialGradient id="en-glass" cx="35%" cy="28%" r="65%"><stop offset="0%" stop-color="#b8d8ff" stop-opacity=".26"/><stop offset="30%" stop-color="#5588bb" stop-opacity=".14"/><stop offset="70%" stop-color="#0f1e33" stop-opacity=".60"/><stop offset="100%" stop-color="#020810" stop-opacity=".95"/></radialGradient>
+            <radialGradient id="en-coat" cx="40%" cy="35%" r="58%"><stop offset="0%" stop-color="#6699ff" stop-opacity=".18"/><stop offset="60%" stop-color="#3355cc" stop-opacity=".07"/><stop offset="100%" stop-color="#001133" stop-opacity="0"/></radialGradient>
+            <radialGradient id="en-rim"><stop offset="80%" stop-color="#fff" stop-opacity="0"/><stop offset="96%" stop-color="#7799bb" stop-opacity=".22"/><stop offset="100%" stop-color="#aabbdd" stop-opacity=".08"/></radialGradient>
+            <radialGradient id="en-hi" cx="30%" cy="24%" r="38%"><stop offset="0%" stop-color="#fff" stop-opacity=".30"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+            <linearGradient id="en-flare" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#cce0ff" stop-opacity=".55"/><stop offset="60%" stop-color="#88aadd" stop-opacity=".14"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient>
+            <clipPath id="en-clip"><circle cx="100" cy="100" r="82"/></clipPath>
+          </defs>
+          <circle class="lens-halo" cx="100" cy="100" r="98" fill="url(#en-halo)"/>
+          <circle cx="100" cy="100" r="96" fill="url(#en-body)"/>
+          <g class="lr-outer" style="--dur:30s" transform-origin="100 100">
+            <circle cx="100" cy="100" r="96" fill="none" stroke="#2a3545" stroke-width=".8" opacity=".5"/>
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#1e2c3a" stroke-width="1.5"/>
+            <g stroke="#445566" stroke-width="1.1" opacity=".6">
+              <line x1="94" y1="100" x2="100" y2="100" transform="rotate(0,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(10,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(20,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(30,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(40,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(50,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(60,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(70,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(80,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(90,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(100,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(110,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(120,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(130,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(140,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(150,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(160,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(170,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(180,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(190,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(200,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(210,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(220,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(230,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(240,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(250,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(260,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(270,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(280,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(290,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(300,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(310,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(320,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(330,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(340,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(350,100,100)"/>
+            </g>
+          </g>
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#3a4a5a" stroke-width="3.5"/>
+          <circle cx="100" cy="100" r="83" fill="none" stroke="#080e16" stroke-width="1.5"/>
+          <g class="lr-mid" style="--dur:20s" transform-origin="100 100">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#1e2e40" stroke-width="2.5"/>
+            <g stroke="#334455" stroke-width=".8" opacity=".55">
+              <line x1="77" y1="100" x2="81" y2="100" transform="rotate(0,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(15,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(30,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(45,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(60,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(75,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(90,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(105,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(120,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(135,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(150,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(165,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(180,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(195,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(210,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(225,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(240,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(255,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(270,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(285,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(300,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(315,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(330,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(345,100,100)"/>
+            </g>
+          </g>
+          <circle cx="100" cy="100" r="74" fill="#04080e"/>
+          <circle cx="100" cy="100" r="74" fill="url(#en-glass)"/>
+          <circle class="ar1" cx="100" cy="100" r="73" fill="none" stroke="#4466cc" stroke-width="1.5" opacity=".20"/>
+          <circle class="ar2" cx="100" cy="100" r="68" fill="none" stroke="#8877ee" stroke-width="1" opacity=".13"/>
+          <circle class="ar3" cx="100" cy="100" r="63" fill="none" stroke="#44aaff" stroke-width=".8" opacity=".10"/>
+          <circle cx="100" cy="100" r="73" fill="url(#en-coat)" clip-path="url(#en-clip)"/>
+          <circle cx="100" cy="100" r="58" fill="none" stroke="#0c1a28" stroke-width="1.5" opacity=".7"/>
+          <circle cx="100" cy="100" r="44" fill="none" stroke="#081018" stroke-width="1" opacity=".55"/>
+          <g class="lr-blades" style="--dur:10s" transform-origin="100 100">
+            <polygon points="100,56 86,67 84,86 100,82" fill="#060a0e" stroke="#0e1824" stroke-width=".5"/>
+            <polygon points="100,56 114,67 116,86 100,82" fill="#07090e" stroke="#0e1824" stroke-width=".5"/>
+            <polygon points="136,75 130,92 113,92 111,75" fill="#060a0e" stroke="#0e1824" stroke-width=".5"/>
+            <polygon points="136,75 138,96 120,98 111,75" fill="#07090e" stroke="#0e1824" stroke-width=".5"/>
+            <polygon points="122,130 138,113 124,103 110,120" fill="#060a0e" stroke="#0e1824" stroke-width=".5"/>
+            <polygon points="78,130 62,113 76,103 90,120" fill="#07090e" stroke="#0e1824" stroke-width=".5"/>
+            <polygon points="64,75 70,92 87,92 89,75" fill="#060a0e" stroke="#0e1824" stroke-width=".5"/>
+          </g>
+          <circle cx="100" cy="100" r="20" fill="#000"/>
+          <circle cx="100" cy="100" r="16" fill="#000"/>
+          <ellipse cx="94" cy="93" rx="3.5" ry="2" fill="white" opacity=".12" transform="rotate(-22,94,93)"/>
+          <path d="M38,50 Q52,32 76,42 Q52,50 46,70 Z" fill="url(#en-flare)" opacity=".38" clip-path="url(#en-clip)"/>
+          <circle cx="100" cy="100" r="74" fill="url(#en-rim)"/>
+          <circle cx="100" cy="100" r="74" fill="url(#en-hi)" clip-path="url(#en-clip)"/>
+          <ellipse cx="63" cy="60" rx="6" ry="4" fill="white" opacity=".40" transform="rotate(-26,63,60)" clip-path="url(#en-clip)"/>
+          <path id="en-arc" d="M20,84 A80,80 0 0,1 180,84" fill="none"/>
+          <text font-size="6.5" fill="#445566" font-family="monospace" letter-spacing="2.2"><textPath href="#en-arc" startOffset="10%">AMP · 50mm f/1.4 · MULTI-COATED</textPath></text>
+        </svg>
+      </div>
+      <div class="lens-label">
+        <span class="lens-lang">English</span>
+        <span class="lens-sub">Enter in English</span>
+        <div class="lens-tags"><span class="lens-tag">Photography</span><span class="lens-tag">Film</span><span class="lens-tag">Media</span></div>
+        <span class="lens-enter">Continue &rarr;</span>
+      </div>
+    </button>
+
+    <div class="lens-divider" aria-hidden="true"></div>
+
+    <!-- ── ITALIAN LENS (warm amber-gold glass) ── -->
+    <button class="lens-btn" onclick="selectLang('it')" aria-label="Entra in Italiano">
+      <div class="lens-graphic" style="--lg:rgba(212,168,83,.30)">
+        <svg viewBox="0 0 200 200">
+          <defs>
+            <radialGradient id="it-halo"><stop offset="55%" stop-color="#8a5a00" stop-opacity="0"/><stop offset="100%" stop-color="#cc8800" stop-opacity=".40"/></radialGradient>
+            <radialGradient id="it-body" cx="50%" cy="42%" r="52%"><stop offset="0%" stop-color="#241a08"/><stop offset="60%" stop-color="#140e04"/><stop offset="100%" stop-color="#080502"/></radialGradient>
+            <radialGradient id="it-glass" cx="35%" cy="28%" r="65%"><stop offset="0%" stop-color="#ffd88a" stop-opacity=".28"/><stop offset="30%" stop-color="#bb8833" stop-opacity=".15"/><stop offset="70%" stop-color="#3a1e00" stop-opacity=".60"/><stop offset="100%" stop-color="#0e0600" stop-opacity=".95"/></radialGradient>
+            <radialGradient id="it-coat" cx="40%" cy="35%" r="58%"><stop offset="0%" stop-color="#ffbb44" stop-opacity=".20"/><stop offset="60%" stop-color="#cc7700" stop-opacity=".08"/><stop offset="100%" stop-color="#330e00" stop-opacity="0"/></radialGradient>
+            <radialGradient id="it-rim"><stop offset="80%" stop-color="#fff" stop-opacity="0"/><stop offset="96%" stop-color="#997744" stop-opacity=".24"/><stop offset="100%" stop-color="#ccaa55" stop-opacity=".08"/></radialGradient>
+            <radialGradient id="it-hi" cx="30%" cy="24%" r="38%"><stop offset="0%" stop-color="#fff" stop-opacity=".32"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+            <linearGradient id="it-flare" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffe8aa" stop-opacity=".58"/><stop offset="60%" stop-color="#ddaa44" stop-opacity=".16"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient>
+            <clipPath id="it-clip"><circle cx="100" cy="100" r="82"/></clipPath>
+          </defs>
+          <circle class="lens-halo" cx="100" cy="100" r="98" fill="url(#it-halo)" style="animation-delay:.5s"/>
+          <circle cx="100" cy="100" r="96" fill="url(#it-body)"/>
+          <g class="lr-outer" style="--dur:34s;animation-direction:reverse" transform-origin="100 100">
+            <circle cx="100" cy="100" r="96" fill="none" stroke="#3a2a14" stroke-width=".8" opacity=".5"/>
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#281a08" stroke-width="1.5"/>
+            <g stroke="#665533" stroke-width="1.1" opacity=".6">
+              <line x1="94" y1="100" x2="100" y2="100" transform="rotate(0,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(10,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(20,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(30,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(40,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(50,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(60,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(70,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(80,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(90,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(100,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(110,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(120,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(130,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(140,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(150,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(160,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(170,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(180,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(190,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(200,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(210,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(220,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(230,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(240,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(250,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(260,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(270,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(280,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(290,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(300,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(310,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(320,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(330,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(340,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(350,100,100)"/>
+            </g>
+          </g>
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#4a3318" stroke-width="3.5"/>
+          <circle cx="100" cy="100" r="83" fill="none" stroke="#0c0804" stroke-width="1.5"/>
+          <g class="lr-mid" style="--dur:22s;animation-direction:reverse" transform-origin="100 100">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#221508" stroke-width="2.5"/>
+            <g stroke="#443322" stroke-width=".8" opacity=".55">
+              <line x1="77" y1="100" x2="81" y2="100" transform="rotate(0,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(15,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(30,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(45,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(60,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(75,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(90,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(105,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(120,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(135,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(150,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(165,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(180,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(195,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(210,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(225,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(240,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(255,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(270,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(285,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(300,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(315,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(330,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(345,100,100)"/>
+            </g>
+          </g>
+          <circle cx="100" cy="100" r="74" fill="#0c0602"/>
+          <circle cx="100" cy="100" r="74" fill="url(#it-glass)"/>
+          <circle class="ar1" cx="100" cy="100" r="73" fill="none" stroke="#cc8833" stroke-width="1.5" opacity=".22"/>
+          <circle class="ar2" cx="100" cy="100" r="68" fill="none" stroke="#ddaa55" stroke-width="1" opacity=".14"/>
+          <circle class="ar3" cx="100" cy="100" r="63" fill="none" stroke="#ffcc66" stroke-width=".8" opacity=".11"/>
+          <circle cx="100" cy="100" r="73" fill="url(#it-coat)" clip-path="url(#it-clip)"/>
+          <circle cx="100" cy="100" r="58" fill="none" stroke="#1c0e02" stroke-width="1.5" opacity=".7"/>
+          <circle cx="100" cy="100" r="44" fill="none" stroke="#140a02" stroke-width="1" opacity=".55"/>
+          <g class="lr-blades" style="--dur:12s;animation-direction:reverse" transform-origin="100 100">
+            <polygon points="100,56 86,67 84,86 100,82" fill="#0c0702" stroke="#180e04" stroke-width=".5"/>
+            <polygon points="100,56 114,67 116,86 100,82" fill="#0d0803" stroke="#180e04" stroke-width=".5"/>
+            <polygon points="136,75 130,92 113,92 111,75" fill="#0c0702" stroke="#180e04" stroke-width=".5"/>
+            <polygon points="136,75 138,96 120,98 111,75" fill="#0d0803" stroke="#180e04" stroke-width=".5"/>
+            <polygon points="122,130 138,113 124,103 110,120" fill="#0c0702" stroke="#180e04" stroke-width=".5"/>
+            <polygon points="78,130 62,113 76,103 90,120" fill="#0d0803" stroke="#180e04" stroke-width=".5"/>
+            <polygon points="64,75 70,92 87,92 89,75" fill="#0c0702" stroke="#180e04" stroke-width=".5"/>
+          </g>
+          <circle cx="100" cy="100" r="20" fill="#000"/>
+          <circle cx="100" cy="100" r="16" fill="#000"/>
+          <ellipse cx="94" cy="93" rx="3.5" ry="2" fill="white" opacity=".10" transform="rotate(-22,94,93)"/>
+          <path d="M38,50 Q52,32 76,42 Q52,50 46,70 Z" fill="url(#it-flare)" opacity=".40" clip-path="url(#it-clip)"/>
+          <circle cx="100" cy="100" r="74" fill="url(#it-rim)"/>
+          <circle cx="100" cy="100" r="74" fill="url(#it-hi)" clip-path="url(#it-clip)"/>
+          <ellipse cx="63" cy="60" rx="6" ry="4" fill="white" opacity=".42" transform="rotate(-26,63,60)" clip-path="url(#it-clip)"/>
+          <path id="it-arc" d="M20,84 A80,80 0 0,1 180,84" fill="none"/>
+          <text font-size="6.5" fill="#665533" font-family="monospace" letter-spacing="2.2"><textPath href="#it-arc" startOffset="10%">AMP · 50mm f/1.4 · MULTI-COATED</textPath></text>
+        </svg>
+      </div>
+      <div class="lens-label">
+        <span class="lens-lang">Italiano</span>
+        <span class="lens-sub">Entra in Italiano</span>
+        <div class="lens-tags"><span class="lens-tag">Fotografia</span><span class="lens-tag">Film</span><span class="lens-tag">Media</span></div>
+        <span class="lens-enter">Continua &rarr;</span>
+      </div>
+    </button>
+
+    <div class="lens-divider" aria-hidden="true"></div>
+
+    <!-- ── ROMANIAN LENS (deep teal-green glass) ── -->
+    <button class="lens-btn" onclick="selectLang('ro')" aria-label="Intr&#259; în Român&#259;">
+      <div class="lens-graphic" style="--lg:rgba(50,160,120,.30)">
+        <svg viewBox="0 0 200 200">
+          <defs>
+            <radialGradient id="ro-halo"><stop offset="55%" stop-color="#006644" stop-opacity="0"/><stop offset="100%" stop-color="#009966" stop-opacity=".38"/></radialGradient>
+            <radialGradient id="ro-body" cx="50%" cy="42%" r="52%"><stop offset="0%" stop-color="#0d1f18"/><stop offset="60%" stop-color="#071410"/><stop offset="100%" stop-color="#030a07"/></radialGradient>
+            <radialGradient id="ro-glass" cx="35%" cy="28%" r="65%"><stop offset="0%" stop-color="#88ffcc" stop-opacity=".24"/><stop offset="28%" stop-color="#33aa77" stop-opacity=".14"/><stop offset="70%" stop-color="#0a2e1e" stop-opacity=".62"/><stop offset="100%" stop-color="#020e08" stop-opacity=".96"/></radialGradient>
+            <radialGradient id="ro-coat" cx="40%" cy="35%" r="58%"><stop offset="0%" stop-color="#44ffaa" stop-opacity=".18"/><stop offset="60%" stop-color="#118855" stop-opacity=".07"/><stop offset="100%" stop-color="#003322" stop-opacity="0"/></radialGradient>
+            <radialGradient id="ro-rim"><stop offset="80%" stop-color="#fff" stop-opacity="0"/><stop offset="96%" stop-color="#448866" stop-opacity=".22"/><stop offset="100%" stop-color="#66aa88" stop-opacity=".08"/></radialGradient>
+            <radialGradient id="ro-hi" cx="30%" cy="24%" r="38%"><stop offset="0%" stop-color="#fff" stop-opacity=".30"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+            <linearGradient id="ro-flare" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ccffee" stop-opacity=".52"/><stop offset="60%" stop-color="#44bb88" stop-opacity=".14"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient>
+            <clipPath id="ro-clip"><circle cx="100" cy="100" r="82"/></clipPath>
+          </defs>
+          <circle class="lens-halo" cx="100" cy="100" r="98" fill="url(#ro-halo)" style="animation-delay:1.1s"/>
+          <circle cx="100" cy="100" r="96" fill="url(#ro-body)"/>
+          <g class="lr-outer" style="--dur:26s" transform-origin="100 100">
+            <circle cx="100" cy="100" r="96" fill="none" stroke="#1e3a2a" stroke-width=".8" opacity=".5"/>
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#142818" stroke-width="1.5"/>
+            <g stroke="#336644" stroke-width="1.1" opacity=".6">
+              <line x1="94" y1="100" x2="100" y2="100" transform="rotate(0,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(10,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(20,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(30,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(40,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(50,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(60,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(70,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(80,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(90,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(100,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(110,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(120,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(130,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(140,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(150,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(160,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(170,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(180,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(190,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(200,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(210,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(220,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(230,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(240,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(250,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(260,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(270,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(280,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(290,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(300,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(310,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(320,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(330,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(340,100,100)"/><line x1="94" y1="100" x2="100" y2="100" transform="rotate(350,100,100)"/>
+            </g>
+          </g>
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#1e4030" stroke-width="3.5"/>
+          <circle cx="100" cy="100" r="83" fill="none" stroke="#050e08" stroke-width="1.5"/>
+          <g class="lr-mid" style="--dur:16s" transform-origin="100 100">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="#143322" stroke-width="2.5"/>
+            <g stroke="#225544" stroke-width=".8" opacity=".55">
+              <line x1="77" y1="100" x2="81" y2="100" transform="rotate(0,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(15,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(30,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(45,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(60,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(75,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(90,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(105,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(120,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(135,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(150,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(165,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(180,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(195,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(210,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(225,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(240,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(255,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(270,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(285,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(300,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(315,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(330,100,100)"/><line x1="77" y1="100" x2="81" y2="100" transform="rotate(345,100,100)"/>
+            </g>
+          </g>
+          <circle cx="100" cy="100" r="74" fill="#020e07"/>
+          <circle cx="100" cy="100" r="74" fill="url(#ro-glass)"/>
+          <circle class="ar1" cx="100" cy="100" r="73" fill="none" stroke="#33cc88" stroke-width="1.5" opacity=".20"/>
+          <circle class="ar2" cx="100" cy="100" r="68" fill="none" stroke="#55ddaa" stroke-width="1" opacity=".13"/>
+          <circle class="ar3" cx="100" cy="100" r="63" fill="none" stroke="#44ffbb" stroke-width=".8" opacity=".10"/>
+          <circle cx="100" cy="100" r="73" fill="url(#ro-coat)" clip-path="url(#ro-clip)"/>
+          <circle cx="100" cy="100" r="58" fill="none" stroke="#082014" stroke-width="1.5" opacity=".7"/>
+          <circle cx="100" cy="100" r="44" fill="none" stroke="#05150d" stroke-width="1" opacity=".55"/>
+          <g class="lr-blades" style="--dur:13s" transform-origin="100 100">
+            <polygon points="100,56 86,67 84,86 100,82" fill="#030e07" stroke="#0a1e10" stroke-width=".5"/>
+            <polygon points="100,56 114,67 116,86 100,82" fill="#040f08" stroke="#0a1e10" stroke-width=".5"/>
+            <polygon points="136,75 130,92 113,92 111,75" fill="#030e07" stroke="#0a1e10" stroke-width=".5"/>
+            <polygon points="136,75 138,96 120,98 111,75" fill="#040f08" stroke="#0a1e10" stroke-width=".5"/>
+            <polygon points="122,130 138,113 124,103 110,120" fill="#030e07" stroke="#0a1e10" stroke-width=".5"/>
+            <polygon points="78,130 62,113 76,103 90,120" fill="#040f08" stroke="#0a1e10" stroke-width=".5"/>
+            <polygon points="64,75 70,92 87,92 89,75" fill="#030e07" stroke="#0a1e10" stroke-width=".5"/>
+          </g>
+          <circle cx="100" cy="100" r="20" fill="#000"/>
+          <circle cx="100" cy="100" r="16" fill="#000"/>
+          <ellipse cx="94" cy="93" rx="3.5" ry="2" fill="white" opacity=".11" transform="rotate(-22,94,93)"/>
+          <path d="M38,50 Q52,32 76,42 Q52,50 46,70 Z" fill="url(#ro-flare)" opacity=".36" clip-path="url(#ro-clip)"/>
+          <circle cx="100" cy="100" r="74" fill="url(#ro-rim)"/>
+          <circle cx="100" cy="100" r="74" fill="url(#ro-hi)" clip-path="url(#ro-clip)"/>
+          <ellipse cx="63" cy="60" rx="6" ry="4" fill="white" opacity=".38" transform="rotate(-26,63,60)" clip-path="url(#ro-clip)"/>
+          <path id="ro-arc" d="M20,84 A80,80 0 0,1 180,84" fill="none"/>
+          <text font-size="6.5" fill="#336655" font-family="monospace" letter-spacing="2.2"><textPath href="#ro-arc" startOffset="10%">AMP · 50mm f/1.4 · MULTI-COATED</textPath></text>
+        </svg>
+      </div>
+      <div class="lens-label">
+        <span class="lens-lang">Rom&acirc;n&#259;</span>
+        <span class="lens-sub">Intr&#259; &icirc;n Rom&acirc;n&#259;</span>
+        <div class="lens-tags"><span class="lens-tag">Fotografie</span><span class="lens-tag">Film</span><span class="lens-tag">Media</span></div>
+        <span class="lens-enter">Continu&#259; &rarr;</span>
+      </div>
+    </button>
+
+  </div><!-- /.lens-row -->
+</div><!-- /#lang-picker -->
+
+
+<!-- ==============================================================
+     MAIN SITE
+============================================================== -->
+<div id="site">
+
+  <!-- ── NAV ── -->
+  <header class="nav">
+    <div class="container">
+      <div class="nav-inner">
+        <a href="#hero" class="nav-logo"><span>Andrei</span> Media</a>
+        <nav aria-label="Main navigation">
+          <ul class="nav-links">
+            <li><a href="#services" id="nav-services">Services</a></li>
+            <li><a href="#about"    id="nav-about">About</a></li>
+            <li><a href="#contact"  id="nav-contact">Contact</a></li>
+          </ul>
+        </nav>
+        <div style="display:flex;align-items:center;gap:.75rem">
+          <button class="nav-lang" id="nav-lang-btn" onclick="returnToPicker()">EN/IT/RO</button>
+          <button class="nav-ham" id="hamburger" aria-label="Toggle menu"
+                  aria-expanded="false" aria-controls="mobile-menu"
+                  onclick="toggleMobileMenu()">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+      <nav id="mobile-menu" class="nav-mobile" style="display:none" aria-label="Mobile navigation">
+        <a href="#services" id="mob-services" onclick="closeMobileMenu()">Services</a>
+        <a href="#about"    id="mob-about"    onclick="closeMobileMenu()">About</a>
+        <a href="#contact"  id="mob-contact"  onclick="closeMobileMenu()">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+
+  <!-- ── HERO — PARALLAX ──
+       .hero-bg is the parallax layer. JS nudges its translateY
+       proportional to how far the user has scrolled.
+  ── -->
+  <section class="hero" id="hero">
+    <div class="hero-bg" id="heroBg">
+      <!--
+        Unsplash photo: professional video/photo production set.
+        The URL parameters w=1600 and q=85 control image size and quality.
+      -->
+      <img
+        src="https://images.unsplash.com/photo-1530685932526-48ec92998eaa?w=1600&q=85"
+        alt="Professional camera on a film set"
+        loading="eager"
+      />
+    </div>
+    <div class="container">
+      <div class="hero-content">
+        <p class="hero-eyebrow" id="hero-eyebrow">Visual Storytelling</p>
+        <h1 class="hero-name"   id="hero-name">Andrei</h1>
+        <p class="hero-name-sub" id="hero-name-sub">Media Production</p>
+        <p class="hero-tagline"  id="hero-tagline">
+          Photography, filmography and media innovation &mdash;
+          crafted with a precise eye, technical depth, and creative vision.
+        </p>
+        <div class="hero-actions">
+          <a href="#services" class="btn-primary" id="hero-cta">See My Work</a>
+          <a href="#contact"  class="btn-ghost"   id="hero-cta2">Get in Touch</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ── PARALLAX BAND #1 — cinematic quote ──
+       A second parallax image strip between hero and services.
+       Its .pb-img translateY is also updated by JS on scroll.
+  ── -->
+  <div class="parallax-band">
+    <div class="pb-img" id="pb1Img">
+      <!--
+        Unsplash: cinema film reels, dramatic lighting.
+      -->
+      <img
+        src="https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=1600&q=80"
+        alt="Film reels on a cinema table"
+        loading="lazy"
+      />
+    </div>
+    <div class="pb-text">
+      <blockquote id="pb-quote">
+        &ldquo;Every frame is a decision. Every cut, a statement.&rdquo;
+      </blockquote>
+      <cite id="pb-cite">Andrei Media Production</cite>
+    </div>
+  </div>
+
+
+  <!-- ── SERVICES — FLIP CARDS ── -->
+  <section class="services" id="services">
+    <div class="container">
+
+      <div class="section-header reveal">
+        <p class="section-eyebrow" id="svc-eyebrow">What I Do</p>
+        <h2 class="section-title">
+          <span id="svc-title-1">Three crafts,</span>
+          <em id="svc-title-2"> one vision.</em>
+        </h2>
+        <p class="section-desc" id="svc-desc">
+          From a single photograph to a full digital product — every project is approached with the same dedication to craft.
+        </p>
+      </div>
+
+      <div class="services-grid">
+
+        <!-- ── CARD 1: PHOTOGRAPHY ──
+             Front: photo + name.  Back: full description.
+             On mobile, a tap toggles the .flipped class (handled by JS).
+        ── -->
+        <div class="flip-card" id="card1" onclick="handleCardClick(this)">
+          <div class="flip-inner">
+
+            <!-- FRONT -->
+            <div class="flip-front">
+              <div class="card-photo">
+                <!--
+                  Unsplash: photographer at golden hour.
+                -->
+                <img
+                  src="https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=600&q=80"
+                  alt="Photographer at golden hour"
+                  loading="lazy"
+                />
+              </div>
+              <div class="card-body">
+                <div class="card-num">01</div>
+                <h3 class="card-name" id="card1-name">Photography</h3>
+                <p class="card-hint" id="card1-hint">Portrait · Landscape · Event</p>
+                <p class="card-flip-hint" id="card1-flip">Hover to learn more</p>
+              </div>
+            </div>
+
+            <!-- BACK -->
+            <div class="flip-back">
+              <span class="back-icon">&#x1F4F7;</span>
+              <h3 class="back-name" id="b1-name">Photography</h3>
+              <p class="back-desc" id="b1-desc">
+                From portraits to landscapes, events to editorial — every frame
+                is a deliberate composition. Natural light, careful staging,
+                and an instinct for the decisive moment.
+              </p>
+            </div>
+
+          </div>
+        </div><!-- /.flip-card -->
+
+
+        <!-- ── CARD 2: FILMOGRAPHY ── -->
+        <div class="flip-card" id="card2" onclick="handleCardClick(this)">
+          <div class="flip-inner">
+
+            <div class="flip-front">
+              <div class="card-photo">
+                <!--
+                  Unsplash: cinema camera / film production.
+                -->
+                <img
+                  src="https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=600&q=80"
+                  alt="Cinema camera on a professional film set"
+                  loading="lazy"
+                />
+              </div>
+              <div class="card-body">
+                <div class="card-num">02</div>
+                <h3 class="card-name" id="card2-name">Filmography</h3>
+                <p class="card-hint" id="card2-hint">Short Film · Brand · Creative</p>
+                <p class="card-flip-hint" id="card2-flip">Hover to learn more</p>
+              </div>
+            </div>
+
+            <div class="flip-back">
+              <span class="back-icon">&#x1F3AC;</span>
+              <h3 class="back-name" id="b2-name">Filmography</h3>
+              <p class="back-desc" id="b2-desc">
+                Cinematic storytelling for short films, brand videos, and
+                creative projects. Full production from concept development
+                to colour grade and final delivery.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+
+        <!-- ── CARD 3: MEDIA PRODUCTION ── -->
+        <div class="flip-card" id="card3" onclick="handleCardClick(this)">
+          <div class="flip-inner">
+
+            <div class="flip-front">
+              <div class="card-photo">
+                <!--
+                  Unsplash: editing suite / post-production monitor.
+                -->
+                <img
+                  src="https://images.unsplash.com/photo-1585776245991-cf89dd7fc73a?w=600&q=80"
+                  alt="Video editing software on a monitor"
+                  loading="lazy"
+                />
+              </div>
+              <div class="card-body">
+                <div class="card-num">03</div>
+                <h3 class="card-name" id="card3-name">Media Production</h3>
+                <p class="card-hint" id="card3-hint">Digital · Code · Workflow</p>
+                <p class="card-flip-hint" id="card3-flip">Hover to learn more</p>
+              </div>
+            </div>
+
+            <div class="flip-back">
+              <span class="back-icon">&#x1F4BB;</span>
+              <h3 class="back-name" id="b3-name">Media Production</h3>
+              <p class="back-desc" id="b3-desc">
+                Where creativity meets technology. A full-service digital
+                offering built on software development skills.
+              </p>
+              <ul class="back-bullets">
+                <li id="b3-b1">Digitalization of archives &amp; analog media</li>
+                <li id="b3-b2">Custom web &amp; application development</li>
+                <li id="b3-b3">Workflow automation &amp; digital tools</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- /.services-grid -->
+    </div>
+  </section>
+
+
+  <!-- ── PARALLAX BAND #2 — between services and about ── -->
+  <div class="parallax-band">
+    <div class="pb-img" id="pb2Img">
+      <!--
+        Unsplash: drone / aerial camera rig — digital production theme.
+      -->
+      <img
+        src="https://images.unsplash.com/photo-1500634245200-e5245c7574ef?w=1600&q=80"
+        alt="Aerial photography drone in flight"
+        loading="lazy"
+      />
+    </div>
+    <div class="pb-text">
+      <blockquote id="pb2-quote">
+        &ldquo;Light is the raw material. Code is the chisel.&rdquo;
+      </blockquote>
+      <cite id="pb2-cite">Andrei Media Production</cite>
+    </div>
+  </div>
+
+
+  <!-- ── ABOUT ── -->
+  <section class="about" id="about">
+    <div class="container">
+      <div class="about-grid">
+
+        <!-- Text side -->
+        <div class="about-text">
+          <div class="section-header reveal">
+            <p class="section-eyebrow" id="abt-eyebrow">About Me</p>
+            <h2 class="section-title" id="abt-title">
+              Behind the lens &amp; the screen.
+            </h2>
+          </div>
+          <p class="reveal" id="abt-p1">
+            I'm <strong>Andrei</strong>, a photographer, filmmaker, and
+            digital creator based in Italy. My work lives at the intersection
+            of visual storytelling and technical craftsmanship.
+          </p>
+          <p class="reveal" id="abt-p2">
+            With a background in both visual arts and software development,
+            I bring an unusually complete perspective to every project —
+            from the first frame to the final line of code.
+          </p>
+          <p class="reveal" id="abt-p3">
+            Whether it's a portrait session, a short film, or a custom
+            digital platform — the approach is always the same:
+            <strong>precision, patience, and a genuine love for the craft.</strong>
+          </p>
+        </div>
+
+        <!-- Aperture decoration + stats -->
+        <div class="about-visual">
+          <div>
+            <div class="aperture-wrap" aria-hidden="true">
+              <svg viewBox="0 0 200 200">
+                <g class="aper-outer">
+                  <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(212,168,83,.15)" stroke-width="1"/>
+                  <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(212,168,83,.10)" stroke-width=".5" stroke-dasharray="4 8"/>
+                  <g stroke="rgba(212,168,83,.35)" stroke-width="1">
+                    <line x1="92" y1="100" x2="96" y2="100" transform="rotate(0,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(30,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(60,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(90,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(120,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(150,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(180,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(210,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(240,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(270,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(300,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(330,100,100)"/>
+                  </g>
+                </g>
+                <g class="aper-inner">
+                  <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(212,168,83,.20)" stroke-width="1.5"/>
+                  <g fill="none" stroke="rgba(212,168,83,.12)" stroke-width="1">
+                    <path d="M100,100 L100,42 A58,58 0 0,1 140,71 Z"/>
+                    <path d="M100,100 L140,71 A58,58 0 0,1 140,129 Z"/>
+                    <path d="M100,100 L140,129 A58,58 0 0,1 100,158 Z"/>
+                    <path d="M100,100 L100,158 A58,58 0 0,1 60,129 Z"/>
+                    <path d="M100,100 L60,129 A58,58 0 0,1 60,71 Z"/>
+                    <path d="M100,100 L60,71 A58,58 0 0,1 100,42 Z"/>
+                  </g>
+                </g>
+                <circle class="aper-dot" cx="100" cy="100" r="8" fill="none" stroke="rgba(212,168,83,.6)" stroke-width="1.5"/>
+                <circle cx="100" cy="100" r="3" fill="rgba(212,168,83,.8)"/>
+              </svg>
+            </div>
+            <div class="about-stats reveal">
+              <div><span class="stat-number" id="stat-1">3+</span><span class="stat-label" id="stat-1-l">Services</span></div>
+              <div><span class="stat-number" id="stat-2">100%</span><span class="stat-label" id="stat-2-l">Passion</span></div>
+              <div><span class="stat-number" id="stat-3">3</span><span class="stat-label" id="stat-3-l">Languages</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       CONTACT SECTION
+       Split into two columns on desktop:
+         Left  → intro text + social/email connect buttons
+         Right → message form
+       Stacks to a single column on mobile.
+  ══════════════════════════════════════════════════════════ -->
+  <section class="contact" id="contact">
+    <div class="container">
+
+      <!-- Section header — fades in via IntersectionObserver -->
+      <div class="section-header reveal">
+        <p class="section-eyebrow" id="cta-eyebrow">Get in Touch</p>
+        <h2 class="section-title"><em id="cta-title">Let&rsquo;s make something</em></h2>
+      </div>
+
+      <!-- Two-column layout -->
+      <div class="contact-grid">
+
+        <!-- ── LEFT COLUMN: intro + social connect options ── -->
+        <div class="contact-left reveal">
+
+          <p class="contact-intro" id="cta-desc">
+            Have a project in mind? Whether it&rsquo;s a photo shoot, a film,
+            or a digital product &mdash; I&rsquo;d love to hear about it.
+          </p>
+
+          <!--
+            CONNECT BUTTONS
+            Each button is an anchor tag with an href pointing to
+            the relevant social platform or mailto link.
+            Replace the # hrefs with your real profile URLs.
+
+            The data-label attribute is used by JS to update the
+            text inside each button when the language changes.
+          -->
+          <p class="connect-label" id="cta-connect-label">Connect with me</p>
+
+          <div class="connect-btns">
+
+            <!-- Email — opens the user's default email client -->
+            <a href="mailto:andreistudio92&#64;gmail&#46;com" class="connect-btn connect-email" aria-label="Send an email">
+              <!--
+                Inline SVG icon for email envelope.
+                Using SVG instead of emoji gives us consistent
+                styling across all browsers and OS.
+              -->
+              <svg class="connect-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="16" rx="3"/>
+                <path d="M2 7l10 7 10-7"/>
+              </svg>
+              <span id="cta-email-btn">Email me</span>
+            </a>
+
+            <!-- Instagram -->
+            <a href="https://www.instagram.com/andrei_artlenses/"
+               target="_blank" rel="noopener noreferrer"
+               class="connect-btn connect-instagram"
+               aria-label="Instagram profile">
+              <svg class="connect-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="20" rx="5"/>
+                <circle cx="12" cy="12" r="4"/>
+                <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+              <span>Instagram</span>
+            </a>
+
+            <!-- Facebook -->
+            <a href="https://www.facebook.com/andrei.andries.9674/"
+               target="_blank" rel="noopener noreferrer"
+               class="connect-btn connect-facebook"
+               aria-label="Facebook profile">
+              <svg class="connect-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+              </svg>
+              <span>Facebook</span>
+            </a>
+
+            <!-- LinkedIn -->
+            <a href="https://www.linkedin.com/in/andrei-andries-834893120/"
+               target="_blank" rel="noopener noreferrer"
+               class="connect-btn connect-linkedin"
+               aria-label="LinkedIn profile">
+              <svg class="connect-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2" y="2" width="20" height="20" rx="4"/>
+                <path d="M7 10v7M7 7v.01M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/>
+              </svg>
+              <span>LinkedIn</span>
+            </a>
+
+          </div><!-- /.connect-btns -->
+        </div><!-- /.contact-left -->
+
+
+        <!-- ── RIGHT COLUMN: message form ── -->
+        <!--
+          HOW THIS FORM WORKS:
+          The form has action="POST" but no real server endpoint here.
+          When the user clicks Send, the JS function handleFormSubmit()
+          intercepts the submit event, validates the fields, and shows
+          a success message — no page reload.
+
+          To connect it to a real backend (Formspree, Netlify Forms,
+          your own server), replace the action attribute and remove
+          the preventDefault() call in handleFormSubmit().
+        -->
+        <form class="contact-form reveal"
+              action="https://formspree.io/f/xwvwnpvl"
+              method="post"
+              id="contact-form"
+              novalidate
+              onsubmit="handleFormSubmit(event)">
+
+          <!-- Name field -->
+          <div class="form-group">
+            <label class="form-label" for="f-name" id="lbl-name">Your name</label>
+            <input
+              class="form-input"
+              type="text"
+              id="f-name"
+              name="name"
+              autocomplete="name"
+              required
+              placeholder="Andrei..."
+            />
+            <!-- Error message shown when field is invalid -->
+            <span class="form-error" id="err-name"></span>
+          </div>
+
+          <!-- Email field -->
+          <div class="form-group">
+            <label class="form-label" for="f-email" id="lbl-email">Your email</label>
+            <input
+              class="form-input"
+              type="email"
+              id="f-email"
+              name="email"
+              autocomplete="email"
+              required
+              placeholder="you@example.com"
+            />
+            <span class="form-error" id="err-email"></span>
+          </div>
+
+          <!-- Service selector — lets the user say what they need -->
+          <div class="form-group">
+            <label class="form-label" for="f-service" id="lbl-service">I&rsquo;m interested in</label>
+            <div class="select-wrap">
+              <!--
+                Custom select wrapper — the .select-wrap div adds
+                the gold arrow icon via CSS ::after so we can style
+                it consistently across browsers.
+              -->
+              <select class="form-input form-select" id="f-service" name="service">
+                <option value="" id="opt-default">Choose a service&hellip;</option>
+                <option value="photography" id="opt-photo">Photography</option>
+                <option value="filmography" id="opt-film">Filmography</option>
+                <option value="media"       id="opt-media">Media Production</option>
+                <option value="other"       id="opt-other">Other / General enquiry</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Message textarea -->
+          <div class="form-group">
+            <label class="form-label" for="f-message" id="lbl-message">Message</label>
+            <textarea
+              class="form-input form-textarea"
+              id="f-message"
+              name="message"
+              rows="5"
+              required
+              id="lbl-message-area"
+              placeholder="Tell me about your project..."
+            ></textarea>
+            <span class="form-error" id="err-message"></span>
+          </div>
+
+          <!-- Submit button -->
+          <button type="submit" class="btn-primary form-submit" id="form-submit-btn">
+            Send message &rarr;
+          </button>
+
+          <!--
+            SUCCESS MESSAGE
+            Hidden by default. JS shows it after successful submission
+            by removing the class "hidden".
+          -->
+          <div class="form-success hidden" id="form-success" role="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:1.4rem;height:1.4rem;flex-shrink:0">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M8 12l3 3 5-5"/>
+            </svg>
+            <span id="form-success-msg">Message sent! I&rsquo;ll be in touch soon.</span>
+          </div>
+
+        </form><!-- /#contact-form -->
+
+      </div><!-- /.contact-grid -->
+    </div>
+  </section>
+
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <span class="footer-logo"><span>Andrei</span> Media Production</span>
+        <span class="footer-copy" id="footer-copy">&copy; 2026 Andrei Media Production</span>
+        <button class="footer-lang" onclick="returnToPicker()">EN / IT / RO</button>
+      </div>
+    </div>
+  </footer>
+
+</div><!-- /#site -->
+
+
+<!-- ==============================================================
+     JAVASCRIPT
+     Sections:
+       1. STRINGS object  — all translated text for EN / IT / RO
+       2. applyLanguage() — swaps text for chosen language
+       3. selectLang()    — picker → site transition
+       4. returnToPicker()
+       5. Mobile menu helpers
+       6. PARALLAX ENGINE — rAF loop that moves hero-bg + band images
+       7. Flip card touch handler
+       8. IntersectionObserver — scroll-reveal for .reveal elements
+       9. window.* exports  — ensure onclick attrs always find functions
+      10. DOMContentLoaded  — wires everything together
+============================================================== -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+
+  /* ============================================================
+     1. STRINGS — all translated copy for every text element.
+        Each key is the id="" of the HTML element it updates.
+        Add a new key here + the matching id on the HTML element
+        to translate any new text you add to the page.
+  ============================================================ */
+  var STRINGS = {
+
+    en: {
+      'nav-services':'Services','nav-about':'About','nav-contact':'Contact',
+      'nav-lang-btn':'IT/RO','mob-services':'Services','mob-about':'About','mob-contact':'Contact',
+      'hero-eyebrow':'Visual Storytelling','hero-name':'Andrei',
+      'hero-name-sub':'Media Production',
+      'hero-tagline':'Photography, filmography and media innovation \u2014 crafted with a precise eye, technical depth, and creative vision.',
+      'hero-cta':'See My Work','hero-cta2':'Get in Touch',
+      'pb-quote':'\u201cEvery frame is a decision. Every cut, a statement.\u201d',
+      'pb-cite':'Andrei Media Production',
+      'pb2-quote':'\u201cLight is the raw material. Code is the chisel.\u201d',
+      'pb2-cite':'Andrei Media Production',
+      'svc-eyebrow':'What I Do','svc-title-1':'Three crafts,','svc-title-2':' one vision.',
+      'svc-desc':'From a single photograph to a full digital product \u2014 every project is approached with the same dedication to craft.',
+      'card1-name':'Photography','card1-hint':'Portrait \u00b7 Landscape \u00b7 Event','card1-flip':'Hover to learn more',
+      'card2-name':'Filmography','card2-hint':'Short Film \u00b7 Brand \u00b7 Creative','card2-flip':'Hover to learn more',
+      'card3-name':'Media Production','card3-hint':'Digital \u00b7 Code \u00b7 Workflow','card3-flip':'Hover to learn more',
+      'b1-name':'Photography','b1-desc':'From portraits to landscapes, events to editorial \u2014 every frame is a deliberate composition. Natural light, careful staging, and an instinct for the decisive moment.',
+      'b2-name':'Filmography','b2-desc':'Cinematic storytelling for short films, brand videos, and creative projects. Full production from concept to colour grade and final delivery.',
+      'b3-name':'Media Production','b3-desc':'Where creativity meets technology. A full-service digital offering built on software development skills.',
+      'b3-b1':'Digitalization of archives & analog media','b3-b2':'Custom web & application development','b3-b3':'Workflow automation & digital tools',
+      'abt-eyebrow':'About Me','abt-title':'Behind the lens & the screen.',
+      'abt-p1':'I\'m Andrei, a photographer, filmmaker, and digital creator based in Italy. My work lives at the intersection of visual storytelling and technical craftsmanship.',
+      'abt-p2':'With a background in both visual arts and software development, I bring an unusually complete perspective to every project \u2014 from the first frame to the final line of code.',
+      'abt-p3':'Whether it\'s a portrait session, a short film, or a custom digital platform \u2014 the approach is always the same: precision, patience, and a genuine love for the craft.',
+      'stat-1':'3+','stat-1-l':'Services','stat-2':'100%','stat-2-l':'Passion','stat-3':'3','stat-3-l':'Languages',
+      'cta-eyebrow':'Get in Touch','cta-title':'Let\'s make something',
+      'cta-desc':'Have a project in mind? Whether it\'s a photo shoot, a film, or a digital product \u2014 I\'d love to hear about it.',
+      'footer-copy':'\u00a9 2026 Andrei Media Production',
+      /* -- Contact form -- */
+      'cta-connect-label':'Connect with me',
+      'cta-email-btn':'Email me',
+      'lbl-name':'Your name','lbl-email':'Your email',
+      'lbl-service':'I\u2019m interested in',
+      'opt-default':'Choose a service\u2026',
+      'opt-photo':'Photography','opt-film':'Filmography',
+      'opt-media':'Media Production','opt-other':'Other / General enquiry',
+      'lbl-message':'Message',
+      'form-submit-btn':'Send message \u2192',
+      'form-success-msg':'Message sent! I\u2019ll be in touch soon.',
+      'err-name-req':'Please enter your name.',
+      'err-email-req':'Please enter a valid email address.',
+      'err-msg-req':'Please write a message.'
+    },
+
+    it: {
+      'nav-services':'Servizi','nav-about':'Chi sono','nav-contact':'Contatti',
+      'nav-lang-btn':'EN/RO','mob-services':'Servizi','mob-about':'Chi sono','mob-contact':'Contatti',
+      'hero-eyebrow':'Narrazione Visiva','hero-name':'Andrei',
+      'hero-name-sub':'Media Production',
+      'hero-tagline':'Fotografia, filmografia e innovazione digitale \u2014 realizzate con occhio preciso, profondit\u00e0 tecnica e visione creativa.',
+      'hero-cta':'Il Mio Lavoro','hero-cta2':'Contattami',
+      'pb-quote':'\u201cOgni fotogramma \u00e8 una scelta. Ogni taglio, una dichiarazione.\u201d',
+      'pb-cite':'Andrei Media Production',
+      'pb2-quote':'\u201cLa luce \u00e8 la materia prima. Il codice \u00e8 lo scalpello.\u201d',
+      'pb2-cite':'Andrei Media Production',
+      'svc-eyebrow':'Cosa Faccio','svc-title-1':'Tre mestieri,','svc-title-2':' una visione.',
+      'svc-desc':'Da un singolo scatto a un prodotto digitale completo \u2014 ogni progetto \u00e8 affrontato con la stessa dedizione al mestiere.',
+      'card1-name':'Fotografia','card1-hint':'Ritratto \u00b7 Paesaggio \u00b7 Evento','card1-flip':'Passa sopra per saperne di pi\u00f9',
+      'card2-name':'Filmografia','card2-hint':'Cortometraggio \u00b7 Brand \u00b7 Creativo','card2-flip':'Passa sopra per saperne di pi\u00f9',
+      'card3-name':'Media Production','card3-hint':'Digitale \u00b7 Codice \u00b7 Workflow','card3-flip':'Passa sopra per saperne di pi\u00f9',
+      'b1-name':'Fotografia','b1-desc':'Da ritratti a paesaggi, eventi ed editorial \u2014 ogni fotogramma \u00e8 una composizione deliberata. Luce naturale, cura nella messa in scena e istinto per il momento decisivo.',
+      'b2-name':'Filmografia','b2-desc':'Narrazione cinematografica per cortometraggi, video aziendali e progetti creativi. Produzione completa dal concept alla color grade e consegna finale.',
+      'b3-name':'Media Production','b3-desc':'Dove creativit\u00e0 e tecnologia si incontrano. Un servizio digitale completo basato su competenze di sviluppo software.',
+      'b3-b1':'Digitalizzazione di archivi e media analogici','b3-b2':'Sviluppo web e applicazioni su misura','b3-b3':'Automazione dei flussi di lavoro e strumenti digitali',
+      'abt-eyebrow':'Chi Sono','abt-title':'Dietro l\'obiettivo e lo schermo.',
+      'abt-p1':'Sono Andrei, fotografo, filmmaker e creatore digitale con base in Italia. Il mio lavoro vive all\'intersezione tra narrazione visiva e artigianato tecnico.',
+      'abt-p2':'Con un background nelle arti visive e nello sviluppo software, porto una prospettiva insolitamente completa a ogni progetto \u2014 dal primo fotogramma all\'ultima riga di codice.',
+      'abt-p3':'Che si tratti di una sessione fotografica, di un cortometraggio o di una piattaforma digitale \u2014 l\'approccio \u00e8 sempre lo stesso: precisione, pazienza e un autentico amore per il mestiere.',
+      'stat-1':'3+','stat-1-l':'Servizi','stat-2':'100%','stat-2-l':'Passione','stat-3':'3','stat-3-l':'Lingue',
+      'cta-eyebrow':'Contattami','cta-title':'Creiamo qualcosa insieme',
+      'cta-desc':'Hai un progetto in mente? Che si tratti di un servizio fotografico, un film o un prodotto digitale \u2014 mi farebbe piacere sentirne parlare.',
+      'footer-copy':'\u00a9 2026 Andrei Media Production',
+      /* -- Contact form -- */
+      'cta-connect-label':'Connettiti con me',
+      'cta-email-btn':'Scrivimi',
+      'lbl-name':'Il tuo nome','lbl-email':'La tua email',
+      'lbl-service':'Sono interessato a',
+      'opt-default':'Scegli un servizio\u2026',
+      'opt-photo':'Fotografia','opt-film':'Filmografia',
+      'opt-media':'Media Production','opt-other':'Altro / Informazioni generali',
+      'lbl-message':'Messaggio',
+      'form-submit-btn':'Invia messaggio \u2192',
+      'form-success-msg':'Messaggio inviato! Ti risponder\u00f2 presto.',
+      'err-name-req':'Inserisci il tuo nome.',
+      'err-email-req':'Inserisci un indirizzo email valido.',
+      'err-msg-req':'Scrivi un messaggio.'
+    },
+
+    ro: {
+      'nav-services':'Servicii','nav-about':'Despre mine','nav-contact':'Contact',
+      'nav-lang-btn':'EN/IT','mob-services':'Servicii','mob-about':'Despre mine','mob-contact':'Contact',
+      'hero-eyebrow':'Povestire Vizual\u0103','hero-name':'Andrei',
+      'hero-name-sub':'Media Production',
+      'hero-tagline':'Fotografie, filmografie \u015fi inova\u021bie digital\u0103 \u2014 realizate cu un ochi precis, profunzime tehnic\u0103 \u015fi viziune creativ\u0103.',
+      'hero-cta':'Vezi lucr\u0103rile mele','hero-cta2':'Contacteaz\u0103-m\u0103',
+      'pb-quote':'\u201cFiecare cadru este o decizie. Fiecare t\u0103iere, o declara\u021bie.\u201d',
+      'pb-cite':'Andrei Media Production',
+      'pb2-quote':'\u201cLumina este materia prim\u0103. Codul este d\u0103lti\u021ba.\u201d',
+      'pb2-cite':'Andrei Media Production',
+      'svc-eyebrow':'Ce fac','svc-title-1':'Trei me\u015fte\u015fuguri,','svc-title-2':' o singur\u0103 viziune.',
+      'svc-desc':'De la o singur\u0103 fotografie la un produs digital complet \u2014 fiecare proiect este abordat cu aceea\u015fi dedica\u021bie.',
+      'card1-name':'Fotografie','card1-hint':'Portret \u00b7 Peisaj \u00b7 Eveniment','card1-flip':'Trece\u021bi cu mouse-ul pentru detalii',
+      'card2-name':'Filmografie','card2-hint':'Scurtmetraj \u00b7 Brand \u00b7 Creativ','card2-flip':'Trece\u021bi cu mouse-ul pentru detalii',
+      'card3-name':'Media Production','card3-hint':'Digital \u00b7 Cod \u00b7 Workflow','card3-flip':'Trece\u021bi cu mouse-ul pentru detalii',
+      'b1-name':'Fotografie','b1-desc':'De la portrete la peisaje, evenimente \u015fi editorial \u2014 fiecare cadru este o compozi\u021bie deliberat\u0103. Lumin\u0103 natural\u0103, punere \u00een scen\u0103 atent\u0103 \u015fi instinct pentru momentul decisiv.',
+      'b2-name':'Filmografie','b2-desc':'Povestire cinematografic\u0103 pentru scurtmetraje, videoclipuri de brand \u015fi proiecte creative. Produc\u021bie complet\u0103 de la concept la etalonare cromatic\u0103 \u015fi livrare final\u0103.',
+      'b3-name':'Media Production','b3-desc':'Acolo unde creativitatea \u00eent\u00e2lne\u015fte tehnologia. Un serviciu digital complet bazat pe abilit\u0103\u021bi de dezvoltare software.',
+      'b3-b1':'Digitalizarea arhivelor \u015fi a mediei analogice','b3-b2':'Dezvoltare web \u015fi aplica\u021bii personalizate','b3-b3':'Automatizarea fluxurilor de lucru \u015fi instrumente digitale',
+      'abt-eyebrow':'Despre mine','abt-title':'Dincolo de obiectiv \u015fi ecran.',
+      'abt-p1':'Sunt Andrei, fotograf, filmmaker \u015fi creator digital cu baza \u00een Italia. Munca mea tr\u0103ie\u015fte la intersec\u021bia dintre povestirea vizual\u0103 \u015fi me\u015fte\u015fugul tehnic.',
+      'abt-p2':'Cu un background \u00een arte vizuale \u015fi dezvoltare software, aduc o perspectiv\u0103 neobi\u015fnuit de complet\u0103 la fiecare proiect \u2014 de la primul cadru p\u00e2n\u0103 la ultima linie de cod.',
+      'abt-p3':'Fie c\u0103 este vorba de o sesiune foto, un scurtmetraj sau o platform\u0103 digital\u0103 personalizat\u0103 \u2014 abordarea este \u00eentotdeauna aceea\u015fi: precizie, r\u0103bdare \u015fi o dragoste autentic\u0103 pentru meserie.',
+      'stat-1':'3+','stat-1-l':'Servicii','stat-2':'100%','stat-2-l':'Pasiune','stat-3':'3','stat-3-l':'Limbi',
+      'cta-eyebrow':'Contact','cta-title':'S\u0103 cre\u0103m ceva \u00eempreun\u0103',
+      'cta-desc':'Ai un proiect \u00een minte? Fie c\u0103 este vorba de un shooting foto, un film sau un produs digital \u2014 mi-ar face pl\u0103cere s\u0103 aud despre el.',
+      'footer-copy':'\u00a9 2026 Andrei Media Production',
+      /* -- Contact form -- */
+      'cta-connect-label':'Conecteaz\u0103-te cu mine',
+      'cta-email-btn':'Trimite email',
+      'lbl-name':'Numele t\u0103u','lbl-email':'Email-ul t\u0103u',
+      'lbl-service':'Sunt interesat de',
+      'opt-default':'Alege un serviciu\u2026',
+      'opt-photo':'Fotografie','opt-film':'Filmografie',
+      'opt-media':'Media Production','opt-other':'Altele / Cerere general\u0103',
+      'lbl-message':'Mesaj',
+      'form-submit-btn':'Trimite mesajul \u2192',
+      'form-success-msg':'Mesaj trimis! Te voi contacta cur\u00e2nd.',
+      'err-name-req':'Te rug\u0103m s\u0103 introduci numele t\u0103u.',
+      'err-email-req':'Te rug\u0103m s\u0103 introduci o adres\u0103 de email valid\u0103.',
+      'err-msg-req':'Te rug\u0103m s\u0103 scrii un mesaj.'
+    }
+  };
+
+
+  /* ============================================================
+     2. applyLanguage(lang)
+        Iterates every key in STRINGS[lang] and sets the matching
+        element's textContent. Safe to call multiple times.
+  ============================================================ */
+  function applyLanguage(lang) {
+    var s = STRINGS[lang];
+    if (!s) return;
+    Object.keys(s).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = s[id];
+    });
+    document.documentElement.lang = lang;
+  }
+
+
+  /* ============================================================
+     3. selectLang(lang)
+        Called by onclick on each lens button.
+        Fades picker out, fades site in, starts hero animation.
+  ============================================================ */
+  function selectLang(lang) {
+    applyLanguage(lang);
+
+    /* Fade picker out */
+    var picker = document.getElementById('lang-picker');
+    picker.classList.add('hidden');
+    setTimeout(function() { picker.style.display = 'none'; }, 700);
+
+    /* Fade site in */
+    document.getElementById('site').classList.add('visible');
+
+    /* Hero entrance animation (slight delay for overlap) */
+    setTimeout(function() {
+      var h = document.querySelector('.hero');
+      if (h) h.classList.add('active');
+    }, 250);
+  }
+
+
+  /* ============================================================
+     4. returnToPicker()
+        Reverses selectLang — hides site, shows picker.
+  ============================================================ */
+  function returnToPicker() {
+    var h = document.querySelector('.hero');
+    if (h) h.classList.remove('active');
+
+    var picker = document.getElementById('lang-picker');
+    picker.style.display = '';
+    picker.classList.remove('hidden');
+
+    document.getElementById('site').classList.remove('visible');
+  }
+
+
+  /* ============================================================
+     5. Mobile menu helpers
+  ============================================================ */
+  function toggleMobileMenu() {
+    var m = document.getElementById('mobile-menu');
+    var b = document.getElementById('hamburger');
+    if (m.style.display === 'flex') { closeMobileMenu(); }
+    else {
+      m.style.display = 'flex';
+      b.classList.add('open');
+      b.setAttribute('aria-expanded','true');
+    }
+  }
+  function closeMobileMenu() {
+    var m = document.getElementById('mobile-menu');
+    var b = document.getElementById('hamburger');
+    m.style.display = 'none';
+    b.classList.remove('open');
+    b.setAttribute('aria-expanded','false');
+  }
+
+
+  /* ============================================================
+     6. PARALLAX ENGINE
+        Uses requestAnimationFrame for smooth 60 fps updates.
+
+        How it works:
+        - We track window.scrollY each frame.
+        - For each parallax element we calculate an offset:
+            offset = scrollY * speed
+          where speed < 1 means the element moves slower than
+          the page (classic parallax depth effect).
+        - We apply the offset as a CSS translateY transform.
+        - The elements are oversized (110-115% tall) to prevent
+          visible gaps at the edges of the parallax travel.
+
+        speed = 0.4 means the image moves 40% as fast as the
+        scroll, so it appears to recede into the background.
+  ============================================================ */
+  var ticking = false; /* flag to avoid queuing multiple rAF calls */
+
+  function updateParallax() {
+    var sy = window.scrollY;
+
+    /* Hero background — moves at 40% scroll speed */
+    var heroBg = document.getElementById('heroBg');
+    if (heroBg) {
+      heroBg.style.transform = 'translateY(' + (sy * 0.40) + 'px)';
+    }
+
+    /* Parallax band #1 — moves at 35% scroll speed.
+       We also need to account for the band's offset from the top. */
+    var pb1 = document.getElementById('pb1Img');
+    if (pb1) {
+      var band1Top = pb1.closest('.parallax-band').getBoundingClientRect().top + sy;
+      var rel1 = (sy - band1Top) * 0.35;
+      pb1.style.transform = 'translateY(' + rel1 + 'px)';
+    }
+
+    /* Parallax band #2 */
+    var pb2 = document.getElementById('pb2Img');
+    if (pb2) {
+      var band2Top = pb2.closest('.parallax-band').getBoundingClientRect().top + sy;
+      var rel2 = (sy - band2Top) * 0.35;
+      pb2.style.transform = 'translateY(' + rel2 + 'px)';
+    }
+
+    ticking = false; /* allow next rAF to be queued */
+  }
+
+  /*
+    Scroll event listener — requests a single animation frame.
+    "ticking" prevents queueing multiple frames per scroll event,
+    keeping performance smooth even on fast scroll.
+  */
+  window.addEventListener('scroll', function() {
+    if (!ticking) {
+      requestAnimationFrame(updateParallax);
+      ticking = true;
+    }
+  }, { passive: true }); /* passive:true → browser doesn't wait for JS before scrolling */
+
+
+  /* ============================================================
+     7. FLIP CARD TOUCH HANDLER
+        On desktop, the CSS :hover triggers the flip.
+        On touch devices there is no hover, so we listen for
+        a click/tap on the card and toggle the .flipped class.
+        A second tap flips it back.
+
+        We detect touch devices by checking for a coarse pointer
+        (finger rather than mouse cursor).
+  ============================================================ */
+  function handleCardClick(card) {
+    /*
+      Only activate click-flip on touch/coarse-pointer devices.
+      On desktop, CSS :hover handles it — no JS needed.
+      matchMedia('(pointer:coarse)') returns true on phones/tablets.
+    */
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      card.classList.toggle('flipped');
+    }
+  }
+
+
+  /* ============================================================
+     8. IntersectionObserver — scroll reveal for .reveal elements
+        When an element with class .reveal enters the viewport
+        (at least 12% visible), .visible is added to it, which
+        triggers its CSS fade-in transition.
+        unobserve() ensures it only animates once.
+  ============================================================ */
+  var revealObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        revealObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  /* Separate observer for flip cards (same logic, different selector) */
+  var cardObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        cardObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+
+  /* ============================================================
+     9. EXPOSE TO GLOBAL SCOPE
+        Inline onclick="selectLang('en')" looks up the function
+        on the window object. Explicitly assigning here guarantees
+        they are reachable even if a third-party script (e.g.
+        Cloudflare) wraps this block in a non-global scope.
+  ============================================================ */
+  /* ============================================================
+     FORM VALIDATION & SUBMISSION
+     handleFormSubmit(event) is called by the form's onsubmit.
+     It:
+       1. Prevents the default browser form submission (page reload)
+       2. Reads the current language to show localised error messages
+       3. Validates each required field
+       4. If valid: hides the form fields and shows a success message
+       5. If invalid: highlights each bad field and shows error text
+  ============================================================ */
+  function handleFormSubmit(event) {
+    /* Step 1 — stop the browser submitting / reloading the page */
+    /* event.preventDefault(); */
+
+    /* Step 2 — get the current language's error strings */
+    var lang = document.documentElement.lang || 'en';
+    var s    = STRINGS[lang] || STRINGS['en'];
+
+    var valid = true; /* we'll flip this false if any field fails */
+
+    /* ── Validate name ── */
+    var nameEl  = document.getElementById('f-name');
+    var nameErr = document.getElementById('err-name');
+    if (!nameEl.value.trim()) {
+      nameEl.classList.add('invalid');
+      nameErr.textContent = s['err-name-req'];
+      valid = false;
+    } else {
+      nameEl.classList.remove('invalid');
+      nameErr.textContent = '';
+    }
+
+    /* ── Validate email ── */
+    var emailEl  = document.getElementById('f-email');
+    var emailErr = document.getElementById('err-email');
+    /*
+      Simple email check: must contain @ and at least one dot after it.
+      A full RFC-5321 regex is overkill for a contact form.
+    */
+    var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim());
+    if (!emailOk) {
+      emailEl.classList.add('invalid');
+      emailErr.textContent = s['err-email-req'];
+      valid = false;
+    } else {
+      emailEl.classList.remove('invalid');
+      emailErr.textContent = '';
+    }
+
+    /* ── Validate message ── */
+    var msgEl  = document.getElementById('f-message');
+    var msgErr = document.getElementById('err-message');
+    if (!msgEl.value.trim()) {
+      msgEl.classList.add('invalid');
+      msgErr.textContent = s['err-msg-req'];
+      valid = false;
+    } else {
+      msgEl.classList.remove('invalid');
+      msgErr.textContent = '';
+    }
+
+    /* Step 4 — if everything is valid, show the success state */
+    if (valid) {
+      /*
+        In a real project you would POST the data to a server here:
+      */
+          fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, message })
+          })
+        /*
+        For now we just hide the form and show the success message.
+      */
+
+      /* Hide all form fields */
+      var form = document.getElementById('contact-form');
+      Array.from(form.querySelectorAll('.form-group, .form-submit')).forEach(function(el) {
+        el.style.display = 'none';
+      });
+
+      /* Show the success message */
+      document.getElementById('form-success').classList.remove('hidden');
+    }
+  }
+
+  window.selectLang       = selectLang;
+  window.returnToPicker   = returnToPicker;
+  window.toggleMobileMenu = toggleMobileMenu;
+  window.closeMobileMenu  = closeMobileMenu;
+  window.handleCardClick  = handleCardClick;
+  window.handleFormSubmit = handleFormSubmit;
+
+
+  /* ============================================================
+     10. DOM READY — wire up observers once the page is parsed
+  ============================================================ */
+  document.addEventListener('DOMContentLoaded', function() {
+
+    /* Observe all .reveal elements for scroll-in animation */
+    document.querySelectorAll('.reveal').forEach(function(el) {
+      revealObserver.observe(el);
+    });
+
+    /* Observe all flip cards */
+    document.querySelectorAll('.flip-card').forEach(function(el) {
+      cardObserver.observe(el);
+    });
+
+    /* Close mobile menu when clicking outside */
+    document.addEventListener('click', function(e) {
+      var m = document.getElementById('mobile-menu');
+      var b = document.getElementById('hamburger');
+      if (m && m.style.display === 'flex' &&
+          !m.contains(e.target) && !b.contains(e.target)) {
+        closeMobileMenu();
+      }
+    });
+
+    /* Run one parallax frame immediately on load */
+    updateParallax();
+
+  });
+
+</script>
+</body>
+</html>

@@ -751,6 +751,7 @@
     .about {
       padding:7rem 0;
       border-top:1px solid var(--border);
+      
     }
     .about-grid {
       display:grid; grid-template-columns:1fr 1fr;
@@ -760,16 +761,26 @@
       .about-grid { grid-template-columns:1fr; gap:2.5rem; }
     }
 
+    
+
     .about-text p {
-      font-size:.98rem; font-weight:300; color:var(--muted);
+      font-size:.98rem; font-weight:300; color:var(--accent-lt);
       line-height:1.82; margin-bottom:1rem;
     }
     .about-text p:last-child { margin-bottom:0; }
     .about-text strong { color:var(--text); font-weight:500; }
 
-    .about-visual { display:flex; align-items:center; justify-content:center; }
+    .about-visual { 
+      display:flex; 
+      align-items:center; 
+      justify-content:center; 
+      background-image: url(./463928274_1087375039697870_2874284218187295845_n.jpg);
+      background-size: cover;
+      
+    }
 
     /* Animated aperture decoration */
+    /*
     .aperture-wrap {
       width:clamp(160px,28vw,260px); aspect-ratio:1;
     }
@@ -777,18 +788,67 @@
     .aper-outer { animation:spin        22s linear infinite; transform-origin:50% 50%; }
     .aper-inner { animation:spinReverse 14s linear infinite; transform-origin:50% 50%; }
     .aper-dot   { animation:glow  2.5s ease-in-out infinite; }
+    */
 
     /* Stats row under the aperture */
     .about-stats { display:flex; gap:2rem; margin-top:2rem; flex-wrap:wrap; }
     .stat-number {
       font-family:var(--serif); font-size:2.1rem;
-      color:var(--accent); line-height:1; display:block;
+      color: orangered; line-height:1; display:block;
+      animation: color-change 2s infinite alternate; /* Animation for color change */
     }
     .stat-label  {
       font-size:.68rem; letter-spacing:.18em;
-      text-transform:uppercase; color:var(--muted);
+      text-transform:uppercase; color: orange;
       margin-top:.25rem; display:block;
+      animation: color-change 2s infinite alternate; /* Animation for color change */
     }
+
+    .stat-number::before,
+    .stat-number::after,
+    .stat-label::before,
+    .stat-label::after {
+      content: attr(data-text); /* Create stroke effect using pseudo-elements */
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: #1100ff;
+      z-index: -1; /* Place behind the text */
+      filter: blur(10px); /* Blur for neon effect */
+      opacity: 0.8; /* Slightly transparent */
+    }
+
+    .stat-number::before,
+    .stat-label::before {
+      animation: stroke-animation 2s infinite alternate; /* Animation for stroke color */
+    }
+
+    /* Keyframes for stroke color change */
+    @keyframes stroke-animation {
+        0% {
+            color: #1100ff; /* Orange */
+        }
+        50% {
+            color: #00ffff; /* Cyan */
+        }
+        100% {
+            color: #1100ff; /* Magenta */
+        }
+    }
+
+/* Keyframes for text color change */
+    @keyframes color-change {
+        0% {
+            text-shadow: 0 0 20px #1100ff, 0 0 30px #1100ff, 0 0 40px #1100ff; /* Magenta */
+        }
+        50% {
+            text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff, 0 0 40px #00ffff; /* Cyan */
+        }
+        100% {
+            text-shadow: 0 0 20px #1100ff, 0 0 30px #1100ff, 0 0 40px #1100ff; /* Magenta */
+        }
+    }
+
 
 
     /* ============================================================
@@ -1617,26 +1677,6 @@
           <div>
             <div class="aperture-wrap" aria-hidden="true">
               <svg viewBox="0 0 200 200">
-                <g class="aper-outer">
-                  <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(212,168,83,.15)" stroke-width="1"/>
-                  <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(212,168,83,.10)" stroke-width=".5" stroke-dasharray="4 8"/>
-                  <g stroke="rgba(212,168,83,.35)" stroke-width="1">
-                    <line x1="92" y1="100" x2="96" y2="100" transform="rotate(0,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(30,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(60,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(90,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(120,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(150,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(180,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(210,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(240,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(270,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(300,100,100)"/><line x1="92" y1="100" x2="96" y2="100" transform="rotate(330,100,100)"/>
-                  </g>
-                </g>
-                <g class="aper-inner">
-                  <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(212,168,83,.20)" stroke-width="1.5"/>
-                  <g fill="none" stroke="rgba(212,168,83,.12)" stroke-width="1">
-                    <path d="M100,100 L100,42 A58,58 0 0,1 140,71 Z"/>
-                    <path d="M100,100 L140,71 A58,58 0 0,1 140,129 Z"/>
-                    <path d="M100,100 L140,129 A58,58 0 0,1 100,158 Z"/>
-                    <path d="M100,100 L100,158 A58,58 0 0,1 60,129 Z"/>
-                    <path d="M100,100 L60,129 A58,58 0 0,1 60,71 Z"/>
-                    <path d="M100,100 L60,71 A58,58 0 0,1 100,42 Z"/>
-                  </g>
-                </g>
-                <circle class="aper-dot" cx="100" cy="100" r="8" fill="none" stroke="rgba(212,168,83,.6)" stroke-width="1.5"/>
-                <circle cx="100" cy="100" r="3" fill="rgba(212,168,83,.8)"/>
               </svg>
             </div>
             <div class="about-stats reveal">
